@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { HttpModule } from '@nestjs/axios';
+import { HttpModule } from '@nestjs/axios'
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
 
-import { CmsProxyModule } from './modules/cms-proxy/cms-proxy.module';
-import configuration from './config/configuration';
+import configuration from './config/configuration'
+import { CmsProxyModule } from './modules/cms-proxy/cms-proxy.module'
 
 @Module({
   imports: [
