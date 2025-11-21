@@ -1,0 +1,19 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Article {
+  content: String!
+  createdAt: Float!
+  id: ID!
+  perex: String!
+  slug: String!
+  status: String!
+  title: String!
+  updatedAt: Float!
+}
+
+type Query {
+  article(id: ID!): Article!
+  articles: [Article!]!
+}

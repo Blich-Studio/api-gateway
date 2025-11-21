@@ -1,0 +1,11 @@
+import { HttpModule } from '@nestjs/axios'
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { ArticlesResolver } from './articles.resolver'
+import { ArticlesService } from './articles.service'
+
+@Module({
+  imports: [HttpModule, ConfigModule],
+  providers: [ArticlesResolver, ArticlesService],
+})
+export class ArticlesModule {}
