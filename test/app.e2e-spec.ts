@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type { INestApplication } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import type { TestingModule } from '@nestjs/testing'
