@@ -288,19 +288,6 @@ describe('API Gateway Consumer Contract Tests', () => {
 
     it('should include required fields in response', () => {
       // Arrange
-      const requiredFields: Array<keyof Article> = [
-        '_id',
-        'title',
-        'content',
-        'slug',
-        'perex',
-        'status',
-        'createdAt',
-        'updatedAt',
-        'authorId',
-        'tags',
-      ]
-
       const article: Article = {
         _id: '1',
         title: 'Test',
@@ -344,23 +331,23 @@ describe('API Gateway Consumer Contract Tests', () => {
           `,
         })
         .expect(200)
-        .expect(_res => {
-          const article: Article = {
-            _id: '1',
-            title: 'Test',
-            content: 'Content',
-            slug: 'test',
-            perex: 'Perex',
-            status: 'published',
-            createdAt: 1234567890,
-            updatedAt: 1234567890,
-            authorId: '507f1f77bcf86cd799439011',
-            tags: [],
-          }
-          // Verify API has data to fetch (even if graphql doesn't request all fields)
-          requiredFields.forEach(field => {
-            expect(article).toHaveProperty(field)
-          })
+        .expect(res => {
+          const body = res.body as GraphQLArticleResponse
+          // Validate response contains article data
+          expect(body.data.article).toBeDefined()
+
+          // Verify required fields are present in the response
+          const responseArticle = body.data.article
+          // Validate the API response has the essential article fields
+          expect(responseArticle).toEqual(
+            expect.objectContaining({
+              title: expect.any(String),
+              content: expect.any(String),
+              slug: expect.any(String),
+              perex: expect.any(String),
+              status: expect.any(String),
+            })
+          )
         })
     })
   })
