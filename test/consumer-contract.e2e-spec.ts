@@ -314,7 +314,7 @@ describe('API Gateway Consumer Contract Tests', () => {
         })
         .expect(200) // GraphQL still returns 200
         .expect(res => {
-          const body = res.body as { errors?: Array<unknown> }
+          const body = res.body as { errors?: unknown[] }
           expect(body.errors).toBeDefined()
         })
     })
@@ -341,7 +341,7 @@ describe('API Gateway Consumer Contract Tests', () => {
         })
         .expect(200)
         .expect(res => {
-          const body = res.body as { errors?: Array<unknown> }
+          const body = res.body as { errors?: unknown[] }
           expect(body.errors).toBeDefined()
         })
     })
