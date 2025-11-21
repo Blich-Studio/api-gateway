@@ -71,6 +71,21 @@ interface GraphQLErrorResponse {
 }
 
 /**
+ * Custom HTTP Error class for type-safe error handling
+ * Extends Error to include HTTP status codes
+ */
+class HttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message)
+    this.name = 'HttpError'
+    Object.setPrototypeOf(this, HttpError.prototype)
+  }
+}
+
+/**
  * API Contract Testing - Consumer-Driven Contracts
  *
  * This test suite validates the Gateway's expectations (consumer contract)
@@ -391,8 +406,7 @@ describe('API Gateway Consumer Contract Tests', () => {
 
     it('should handle 404 from CMS API', () => {
       // Arrange
-      const error = new Error('Not Found') as Error & { status: number }
-      error.status = 404
+      const error = new HttpError('Not Found', 404)
 
       jest.spyOn(httpService, 'get').mockReturnValue(throwError(() => error))
 
