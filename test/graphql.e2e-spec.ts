@@ -2,7 +2,8 @@ import { HttpService } from '@nestjs/axios'
 import type { INestApplication } from '@nestjs/common'
 import type { TestingModule } from '@nestjs/testing'
 import { Test } from '@nestjs/testing'
-import type { AxiosResponse } from 'axios'
+import type { AxiosRequestHeaders, AxiosResponse } from 'axios'
+import type { Server } from 'http'
 import { of, throwError } from 'rxjs'
 import request from 'supertest'
 import { AppModule } from './../src/app.module'
@@ -62,12 +63,12 @@ describe('GraphQL (e2e)', () => {
         statusText: 'OK',
         headers: {},
         config: {
-          headers: undefined,
+          headers: {} as AxiosRequestHeaders,
         },
       } as AxiosResponse)
     )
 
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .post('/graphql')
       .send({
         query: `
@@ -86,10 +87,13 @@ describe('GraphQL (e2e)', () => {
       })
       .expect(200)
       .expect(res => {
-        expect(res.body.data.articles).toBeDefined()
-        expect(res.body.data.articles[0].title).toBe('Test Article 1')
-        expect(res.body.data.articles[0].slug).toBe('test-article-1')
-        expect(res.body.data.articles[0].perex).toBe('Perex 1')
+        const body = res.body as {
+          data: { articles: Array<{ title: string; slug: string; perex: string }> }
+        }
+        expect(body.data.articles).toBeDefined()
+        expect(body.data.articles[0].title).toBe('Test Article 1')
+        expect(body.data.articles[0].slug).toBe('test-article-1')
+        expect(body.data.articles[0].perex).toBe('Perex 1')
       })
   })
 
@@ -114,12 +118,12 @@ describe('GraphQL (e2e)', () => {
         statusText: 'OK',
         headers: {},
         config: {
-          headers: undefined,
+          headers: {} as AxiosRequestHeaders,
         },
       } as AxiosResponse)
     )
 
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .post('/graphql')
       .send({
         query: `
@@ -134,16 +138,19 @@ describe('GraphQL (e2e)', () => {
       })
       .expect(200)
       .expect(res => {
-        expect(res.body.data.article).toBeDefined()
-        expect(res.body.data.article.title).toBe('Test Article 1')
-        expect(res.body.data.article.id).toBe('1')
+        const body = res.body as {
+          data: { article: { title: string; id: string } }
+        }
+        expect(body.data.article).toBeDefined()
+        expect(body.data.article.title).toBe('Test Article 1')
+        expect(body.data.article.id).toBe('1')
       })
   })
 
   it('should handle CMS API errors gracefully', () => {
     jest.spyOn(httpService, 'get').mockReturnValue(throwError(() => new Error('CMS API Error')))
 
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .post('/graphql')
       .send({
         query: `
@@ -157,7 +164,8 @@ describe('GraphQL (e2e)', () => {
       })
       .expect(200)
       .expect(res => {
-        expect(res.body.errors).toBeDefined()
+        const body = res.body as { errors: unknown[] }
+        expect(body.errors).toBeDefined()
       })
   })
 })
