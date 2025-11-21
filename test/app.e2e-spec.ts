@@ -1,25 +1,48 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { INestApplication } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+import { Test, TestingModule } from '@nestjs/testing'
+import request from 'supertest'
+import { AppModule } from './../src/app.module'
+import { HttpExceptionFilter } from './../src/common/filters/http-exception.filter'
+import { TransformInterceptor } from './../src/common/interceptors/transform.interceptor'
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication
+  let jwtService: JwtService
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    }).compile()
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
+    app = moduleFixture.createNestApplication()
 
-  it('/ (GET)', () => {
+    // Apply global interceptors and filters to match main.ts
+    app.useGlobalFilters(new HttpExceptionFilter())
+    app.useGlobalInterceptors(new TransformInterceptor())
+
+    await app.init()
+
+    jwtService = moduleFixture.get<JwtService>(JwtService)
+  })
+
+  it('/public (GET)', () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get('/public')
       .expect(200)
-      .expect('Hello World!');
-  });
-});
+      .expect({ data: { message: 'This is public' } })
+  })
+
+  it('/profile (GET) - Unauthorized', () => {
+    return request(app.getHttpServer()).get('/profile').expect(401)
+  })
+
+  it('/profile (GET) - Authorized', () => {
+    const token = jwtService.sign({ sub: '123', username: 'testuser' })
+    return request(app.getHttpServer())
+      .get('/profile')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect({ data: { userId: '123', username: 'testuser' } })
+  })
+})
