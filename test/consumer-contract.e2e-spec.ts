@@ -1,3 +1,4 @@
+import { HttpError } from '@blich-studio/shared'
 import { HttpService } from '@nestjs/axios'
 import type { INestApplication } from '@nestjs/common'
 import type { TestingModule } from '@nestjs/testing'
@@ -68,21 +69,6 @@ interface GraphQLErrorResponse {
   errors?: Array<{
     message: string
   }>
-}
-
-/**
- * Custom HTTP Error class for type-safe error handling
- * Extends Error to include HTTP status codes
- */
-class HttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number
-  ) {
-    super(message)
-    this.name = 'HttpError'
-    Object.setPrototypeOf(this, HttpError.prototype)
-  }
 }
 
 /**
