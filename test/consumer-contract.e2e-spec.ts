@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { HttpError } from '@blich-studio/shared'
 import { HttpService } from '@nestjs/axios'
 import type { INestApplication } from '@nestjs/common'
