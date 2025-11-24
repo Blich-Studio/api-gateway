@@ -13,39 +13,39 @@ The API Gateway for Blich Studio, built with [NestJS](https://nestjs.com/). This
 ## Prerequisites
 
 - Node.js (v18 or later)
-- npm or pnpm
+- [Bun 1.1+](https://bun.sh/) for dependency management and scripts
 - Running instance of `cms-api` (default: http://localhost:3001)
 
 ## Installation
 
 ```bash
-$ npm install
+$ bun install
 ```
 
 ## Running the app
 
 ```bash
 # development
-$ npm run start
+$ bun run start
 
 # watch mode
-$ npm run start:dev
+$ bun run start:dev
 
 # production mode
-$ npm run start:prod
+$ bun run start:prod
 ```
 
 ## Test
 
 ```bash
 # unit tests
-$ npm run test
+$ bun run test
 
 # e2e tests
-$ npm run test:e2e
+$ bun run test:e2e
 
 # test coverage
-$ npm run test:cov
+$ bun run test:cov
 ```
 
 ## Documentation
@@ -73,7 +73,7 @@ SUPABASE_URL=https://your-supabase-instance.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=service-role-key
 ```
 
-Adjust the values to match your local Supabase project and CMS API endpoint before running `npm run start:dev` or the e2e tests.
+Adjust the values to match your local Supabase project and CMS API endpoint before running `bun run start:dev` or the e2e tests.
 
 ### Authentication Workflows
 
