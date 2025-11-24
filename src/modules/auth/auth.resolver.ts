@@ -76,7 +76,7 @@ export class AuthResolver {
   }
 
   private getRoleFromMetadata(
-    user: AuthResponse['data']['user'] | null | undefined
+    user: AuthResponse['data']['user'] | undefined
   ): UserRole | undefined {
     const metadata = (user?.app_metadata ?? {}) as Record<string, unknown>
     const candidate = metadata.role

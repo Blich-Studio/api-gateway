@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import type { JwtSignOptions } from '@nestjs/jwt'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
-import type { StringValue } from 'ms'
 import { SupabaseModule } from '../supabase/supabase.module'
 import { UsersModule } from '../users/users.module'
 import { AdminAuthController } from './admin-auth.controller'
@@ -22,7 +22,7 @@ import { RolesGuard } from './roles.guard'
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('jwtSecret'),
         signOptions: {
-          expiresIn: configService.getOrThrow<StringValue>('jwtExpiresIn'),
+          expiresIn: configService.getOrThrow<JwtSignOptions['expiresIn']>('jwtExpiresIn'),
         },
       }),
       inject: [ConfigService],
