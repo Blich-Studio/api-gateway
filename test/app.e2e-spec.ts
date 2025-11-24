@@ -40,11 +40,11 @@ describe('AppController (e2e)', () => {
   })
 
   it('/profile (GET) - Authorized', () => {
-    const token = jwtService.sign({ sub: '123', username: 'testuser' })
+    const token = jwtService.sign({ sub: '123', role: 'admin', email: 'admin@example.com' })
     return request(app.getHttpServer())
       .get('/profile')
       .set('Authorization', `Bearer ${token}`)
       .expect(200)
-      .expect({ data: { userId: '123', username: 'testuser' } })
+      .expect({ data: { userId: '123', role: 'admin', email: 'admin@example.com' } })
   })
 })

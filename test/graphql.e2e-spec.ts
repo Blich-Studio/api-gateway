@@ -8,12 +8,27 @@ import type { Server } from 'http'
 import { of, throwError } from 'rxjs'
 import request from 'supertest'
 import { AppModule } from './../src/app.module'
+import { SupabaseService } from './../src/modules/supabase/supabase.service'
 
-type HttpServiceMock = {
+interface HttpServiceMock {
   get: jest.Mock
   post: jest.Mock
   patch: jest.Mock
   delete: jest.Mock
+}
+
+interface SupabaseClientMock {
+  auth: {
+    signUp: jest.Mock
+    signInWithPassword: jest.Mock
+    admin: {
+      updateUserById: jest.Mock
+    }
+  }
+}
+
+interface SupabaseServiceMock {
+  getClient: jest.Mock<SupabaseClientMock, []>
 }
 
 const mockAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
@@ -30,10 +45,15 @@ const SUPABASE_URL = 'https://supabase.local'
 const CMS_API_URL = 'http://cms.local'
 const SUPABASE_SERVICE_ROLE_KEY = 'service-role-key'
 
+const isJwtPayload = (value: unknown): value is { sub: string; role: string } =>
+  typeof value === 'object' && value !== null && 'sub' in value && 'role' in value
+
 describe('GraphQL (e2e)', () => {
   let app: INestApplication
   let jwtService: JwtService
   let httpServiceMock: HttpServiceMock
+  let supabaseClientMock: SupabaseClientMock
+  let supabaseServiceMock: SupabaseServiceMock
 
   beforeEach(async () => {
     process.env.SUPABASE_URL = SUPABASE_URL
@@ -46,12 +66,26 @@ describe('GraphQL (e2e)', () => {
       patch: jest.fn(),
       delete: jest.fn(),
     }
+    supabaseClientMock = {
+      auth: {
+        signUp: jest.fn(),
+        signInWithPassword: jest.fn(),
+        admin: {
+          updateUserById: jest.fn().mockResolvedValue({ data: null, error: null }),
+        },
+      },
+    }
+    supabaseServiceMock = {
+      getClient: jest.fn(() => supabaseClientMock),
+    }
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(HttpService)
       .useValue(httpServiceMock)
+      .overrideProvider(SupabaseService)
+      .useValue(supabaseServiceMock)
       .compile()
 
     app = moduleFixture.createNestApplication()
@@ -140,9 +174,7 @@ describe('GraphQL (e2e)', () => {
       tags: [],
     }
 
-    httpServiceMock.get.mockReturnValue(
-      of(mockAxiosResponse(article) as AxiosResponse<typeof article>)
-    )
+    httpServiceMock.get.mockReturnValue(of(mockAxiosResponse(article)))
 
     return request(app.getHttpServer() as Server)
       .post('/graphql')
@@ -192,27 +224,20 @@ describe('GraphQL (e2e)', () => {
 
   describe('Auth mutations', () => {
     it('registerUser should create a Supabase identity, persist the role, and issue a gateway JWT', async () => {
-      const supabaseSignupUrl = `${SUPABASE_URL}/auth/v1/signup`
       const cmsUsersUrl = `${CMS_API_URL}/api/users`
 
+      supabaseClientMock.auth.signUp.mockResolvedValue({
+        data: {
+          user: { id: 'user-123', email: 'writer@example.com' },
+          session: {
+            access_token: 'supabase-access-token',
+            refresh_token: 'supabase-refresh-token',
+          },
+        },
+        error: null,
+      })
+
       httpServiceMock.post.mockImplementation((url: string, data?: Record<string, unknown>) => {
-        if (url === supabaseSignupUrl) {
-          expect(data).toMatchObject({
-            email: 'writer@example.com',
-            password: 'SecurePass123!',
-          })
-
-          return of(
-            mockAxiosResponse({
-              user: { id: 'user-123', email: 'writer@example.com' },
-              session: {
-                access_token: 'supabase-access-token',
-                refresh_token: 'supabase-refresh-token',
-              },
-            })
-          )
-        }
-
         if (url === cmsUsersUrl) {
           expect(data).toMatchObject({
             externalId: 'user-123',
@@ -248,6 +273,14 @@ describe('GraphQL (e2e)', () => {
         .post('/graphql')
         .send({ query: mutation })
 
+      expect(supabaseClientMock.auth.signUp).toHaveBeenCalledWith({
+        email: 'writer@example.com',
+        password: 'SecurePass123!',
+      })
+      expect(supabaseClientMock.auth.admin.updateUserById).toHaveBeenCalledWith('user-123', {
+        app_metadata: { role: 'writer' },
+      })
+
       expect(response.status).toBe(200)
       const payload = (
         response.body as {
@@ -260,32 +293,28 @@ describe('GraphQL (e2e)', () => {
       expect(payload.user).toEqual({ id: 'user-123', email: 'writer@example.com', role: 'writer' })
       expect(payload.accessToken).toBeDefined()
 
-      const decoded = jwtService.decode(payload.accessToken) as { sub: string; role: string } | null
-      expect(decoded).toBeTruthy()
-      expect(decoded?.sub).toBe('user-123')
-      expect(decoded?.role).toBe('writer')
+      const decoded: unknown = jwtService.decode(payload.accessToken)
+      if (!isJwtPayload(decoded)) {
+        throw new Error('Expected JWT payload to include sub and role claims')
+      }
+      expect(decoded.sub).toBe('user-123')
+      expect(decoded.role).toBe('writer')
     })
 
     it('loginUser should authenticate against Supabase and embed role claims in the issued JWT', async () => {
-      const supabaseLoginUrl = `${SUPABASE_URL}/auth/v1/token?grant_type=password`
-
-      httpServiceMock.post.mockImplementation((url: string, data?: Record<string, unknown>) => {
-        if (url === supabaseLoginUrl) {
-          expect(data).toMatchObject({
+      supabaseClientMock.auth.signInWithPassword.mockResolvedValue({
+        data: {
+          user: {
+            id: 'writer-456',
             email: 'writer@example.com',
-            password: 'SecurePass123!',
-          })
-
-          return of(
-            mockAxiosResponse({
-              access_token: 'supabase-access-token',
-              refresh_token: 'supabase-refresh-token',
-              user: { id: 'writer-456', email: 'writer@example.com' },
-            })
-          )
-        }
-
-        throw new Error(`Unexpected POST ${url}`)
+            app_metadata: { role: 'writer' },
+          },
+          session: {
+            access_token: 'supabase-access-token',
+            refresh_token: 'supabase-refresh-token',
+          },
+        },
+        error: null,
       })
 
       httpServiceMock.get.mockImplementation((url: string) => {
@@ -318,6 +347,12 @@ describe('GraphQL (e2e)', () => {
         .post('/graphql')
         .send({ query: mutation })
 
+      expect(supabaseClientMock.auth.signInWithPassword).toHaveBeenCalledWith({
+        email: 'writer@example.com',
+        password: 'SecurePass123!',
+      })
+      expect(supabaseClientMock.auth.admin.updateUserById).not.toHaveBeenCalled()
+
       expect(response.status).toBe(200)
       const payload = (
         response.body as {
@@ -334,10 +369,12 @@ describe('GraphQL (e2e)', () => {
       })
       expect(payload.accessToken).toBeDefined()
 
-      const decoded = jwtService.decode(payload.accessToken) as { sub: string; role: string } | null
-      expect(decoded).toBeTruthy()
-      expect(decoded?.sub).toBe('writer-456')
-      expect(decoded?.role).toBe('writer')
+      const decoded: unknown = jwtService.decode(payload.accessToken)
+      if (!isJwtPayload(decoded)) {
+        throw new Error('Expected JWT payload to include sub and role claims')
+      }
+      expect(decoded.sub).toBe('writer-456')
+      expect(decoded.role).toBe('writer')
     })
   })
 })

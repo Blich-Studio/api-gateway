@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
+import type { AuthenticatedUser, UserRole } from './auth.types'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -13,9 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     })
   }
 
-  validate(payload: { sub: string; username: string }) {
-    // This is where we would validate the user against the database
-    // For now, we just return the payload
-    return { userId: payload.sub, username: payload.username }
+  validate(payload: { sub: string; role: UserRole; email?: string }): AuthenticatedUser {
+    return { userId: payload.sub, role: payload.role, email: payload.email }
   }
 }

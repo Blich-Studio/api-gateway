@@ -13,7 +13,36 @@ type Article {
   updatedAt: Float!
 }
 
+type AuthPayload {
+  accessToken: String!
+  user: User!
+}
+
+input LoginUserInput {
+  email: String!
+  password: String!
+}
+
+type Mutation {
+  loginUser(input: LoginUserInput!): AuthPayload!
+  registerUser(input: RegisterUserInput!): AuthPayload!
+}
+
 type Query {
   article(id: ID!): Article!
   articles: [Article!]!
+}
+
+input RegisterUserInput {
+  displayName: String
+  email: String!
+  password: String!
+  role: String!
+}
+
+type User {
+  displayName: String
+  email: String
+  id: ID!
+  role: String!
 }

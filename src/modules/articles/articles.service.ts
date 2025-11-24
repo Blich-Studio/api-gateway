@@ -3,17 +3,18 @@ import { HttpService } from '@nestjs/axios'
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { firstValueFrom } from 'rxjs'
+import type { ArticlesServiceContract } from './contracts/articles-service.contract'
 import { Article } from './models/article.model'
 
 @Injectable()
-export class ArticlesService {
+export class ArticlesService implements ArticlesServiceContract {
   private readonly cmsApiUrl: string
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService
   ) {
-    this.cmsApiUrl = this.configService.get<string>('CMS_API_URL', 'http://localhost:3001')
+    this.cmsApiUrl = this.configService.getOrThrow<string>('cmsApiUrl')
   }
 
   async findAll(): Promise<Article[]> {
