@@ -1,15 +1,29 @@
-export default () => {
-  const port = process.env.PORT
-  const cmsApiUrl = process.env.CMS_API_URL
-  const jwtSecret = process.env.JWT_SECRET
+import { MissingEnvironmentVariableError } from '@blich-studio/shared'
 
-  if (!port) throw new Error('PORT environment variable is required')
-  if (!cmsApiUrl) throw new Error('CMS_API_URL environment variable is required')
-  if (!jwtSecret) throw new Error('JWT_SECRET environment variable is required')
+const CONTEXT = 'API Gateway'
+
+const requireEnv = (key: string): string => {
+  const value = process.env[key]
+  if (!value) {
+    throw new MissingEnvironmentVariableError(key, CONTEXT)
+  }
+  return value
+}
+
+export default () => {
+  const portValue = requireEnv('PORT')
+  const port = parseInt(portValue, 10)
+
+  if (Number.isNaN(port)) {
+    throw new MissingEnvironmentVariableError('PORT', CONTEXT)
+  }
 
   return {
-    port: parseInt(port, 10),
-    cmsApiUrl,
-    jwtSecret,
+    port,
+    cmsApiUrl: requireEnv('CMS_API_URL'),
+    jwtSecret: requireEnv('JWT_SECRET'),
+    jwtExpiresIn: requireEnv('JWT_EXPIRES_IN'),
+    supabaseUrl: requireEnv('SUPABASE_URL'),
+    supabaseServiceRoleKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   }
 }

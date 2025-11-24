@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module'
 // import { CmsProxyModule } from './modules/cms-proxy/cms-proxy.module'
 import { AppController } from './app.controller'
 import { ArticlesModule } from './modules/articles/articles.module'
+import { EditorialModule } from './modules/editorial/editorial.module'
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ArticlesModule } from './modules/articles/articles.module'
     HttpModule,
     AuthModule,
     ArticlesModule,
+    EditorialModule,
     // CmsProxyModule,
   ],
   controllers: [AppController],
