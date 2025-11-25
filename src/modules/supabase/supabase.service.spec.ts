@@ -6,6 +6,8 @@ jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(),
 }))
 
+type SupabaseClientInstance = ReturnType<typeof createClient>
+
 describe('SupabaseService', () => {
   const createClientMock = createClient as jest.MockedFunction<typeof createClient>
   const configService = {
@@ -30,7 +32,7 @@ describe('SupabaseService', () => {
       throw new Error(`Unexpected config key ${key}`)
     })
 
-    const fakeClient = Symbol('supabase-client')
+    const fakeClient = Symbol('supabase-client') as unknown as SupabaseClientInstance
     createClientMock.mockReturnValue(fakeClient)
 
     const service = new SupabaseService(configService)
