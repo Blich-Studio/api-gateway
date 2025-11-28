@@ -1,17 +1,12 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common'
-import type { Request as ExpressRequest } from 'express'
-import { JwtAuthGuard } from './modules/auth/jwt-auth.guard'
+import { Controller, Get } from '@nestjs/common'
+import { AppService } from './app.service'
 
 @Controller()
 export class AppController {
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getProfile(@Request() req: ExpressRequest & { user: unknown }) {
-    return req.user
-  }
+  constructor(private readonly appService: AppService) {}
 
-  @Get('public')
-  getPublic() {
-    return { message: 'This is public' }
+  @Get()
+  getHello(): string {
+    return this.appService.getHello()
   }
 }
