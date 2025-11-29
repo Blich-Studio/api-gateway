@@ -14,7 +14,7 @@ export interface PostgresClient {
 
 /**
  * Parse boolean value from string configuration
- * Handles: 'true', '1', 'yes', 'TRUE', 'Yes', etc.
+ * Handles: 'true', '1', 'yes' (case-insensitive)
  */
 function parseBoolean(value: string | undefined, defaultValue = false): boolean {
   if (!value) return defaultValue
@@ -28,6 +28,17 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
     {
       provide: POSTGRES_CLIENT,
       useFactory: (configService: ConfigService) => {
+        const sslEnabled = parseBoolean(configService.get<string>('POSTGRES_SSL'))
+        const sslRejectUnauthorized = configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED')
+        const sslCa = configService.get<string>('POSTGRES_SSL_CA')
+
+        // Warn if SSL configs are provided but SSL is not enabled
+        if (!sslEnabled && (sslRejectUnauthorized || sslCa)) {
+          console.warn(
+            'WARNING: POSTGRES_SSL_REJECT_UNAUTHORIZED or POSTGRES_SSL_CA is set but POSTGRES_SSL is not enabled. SSL settings will be ignored.'
+          )
+        }
+
         return new Pool({
           host: configService.getOrThrow<string>('POSTGRES_HOST'),
           port: configService.getOrThrow<number>('POSTGRES_PORT'),
@@ -37,15 +48,10 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
-          ssl: parseBoolean(configService.get<string>('POSTGRES_SSL'))
+          ssl: sslEnabled
             ? {
-                rejectUnauthorized: parseBoolean(
-                  configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED'),
-                  true
-                ),
-                ...(configService.get<string>('POSTGRES_SSL_CA')
-                  ? { ca: configService.get<string>('POSTGRES_SSL_CA') }
-                  : {}),
+                rejectUnauthorized: parseBoolean(sslRejectUnauthorized, true),
+                ...(sslCa ? { ca: sslCa } : {}),
               }
             : false,
         })

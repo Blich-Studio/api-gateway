@@ -27,6 +27,7 @@ interface EmailService {
 @Injectable()
 export class UserAuthService {
   private readonly logger = new Logger(UserAuthService.name)
+  private readonly TOKEN_PREFIX_LENGTH = 8 // Length of token prefix for efficient lookup
 
   constructor(
     @Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient,
@@ -108,8 +109,8 @@ export class UserAuthService {
   async verifyEmail(verifyDto: VerifyEmailDto): Promise<VerifyEmailResponse> {
     const { token } = verifyDto
 
-    // Extract token prefix for efficient lookup (first 8 chars)
-    const tokenPrefix = token.substring(0, 8)
+    // Extract token prefix for efficient lookup
+    const tokenPrefix = token.substring(0, this.TOKEN_PREFIX_LENGTH)
 
     // Query tokens with matching prefix
     const tokenQuery = `
@@ -133,12 +134,16 @@ export class UserAuthService {
     let matchedToken: DbRow | null = null
     let hasExpiredMatch = false
 
-    // Compare all tokens to prevent timing attacks (don't exit early)
-    // Use constant-time comparison by checking all tokens even after finding a match
+    // Use constant-time comparison to prevent timing attacks
     const tokenHash = createHash('sha256').update(token).digest('hex')
+    const tokenHashBuffer = Buffer.from(tokenHash, 'hex')
 
     for (const row of tokenResult.rows) {
-      const isMatch = tokenHash === (row.token as string)
+      const storedHashBuffer = Buffer.from(row.token as string, 'hex')
+      // Use crypto.timingSafeEqual for constant-time comparison
+      const isMatch =
+        tokenHashBuffer.length === storedHashBuffer.length &&
+        tokenHashBuffer.compare(storedHashBuffer) === 0
       if (isMatch && !matchedToken) {
         // Check if token is expired
         if (new Date(row.expires_at as string) < new Date()) {
@@ -251,7 +256,7 @@ export class UserAuthService {
     // Use SHA-256 for token hashing (fast, cryptographically secure)
     // Tokens don't need bcrypt's intentional slowness - only passwords do
     const tokenHash = createHash('sha256').update(token).digest('hex')
-    const tokenPrefix = token.substring(0, 8) // Store prefix for efficient lookup
+    const tokenPrefix = token.substring(0, this.TOKEN_PREFIX_LENGTH) // Store prefix for efficient lookup
     const expiryHours = this.configService.get<number>('VERIFICATION_TOKEN_EXPIRY_HOURS', 24)
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000)
 

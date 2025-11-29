@@ -157,7 +157,7 @@ EMAIL_FROM=noreply@blichstudio.com
 
 # Verification Token Configuration
 VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours
-BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (for passwords only, tokens use SHA-256)
+BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (for passwords only)
 
 # Application URL
 APP_URL=http://localhost:3000               # Used for verification URLs
@@ -166,9 +166,18 @@ APP_URL=http://localhost:3000               # Used for verification URLs
 ### Database Setup
 
 1. **Run the initial migration:**
+   
+   If using the provided setup script:
    ```bash
    # From the project root
    ./scripts/setup-registration.sh
+   ```
+   
+   Or manually with psql:
+   ```bash
+   export PGPASSWORD="${POSTGRES_PASSWORD}"
+   psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f database/migrations/001_user_registration.sql
+   unset PGPASSWORD
    ```
 
 2. **Apply the token optimization migration:**
@@ -207,8 +216,10 @@ Passwords must:
 
 1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12) for secure, intentionally slow hashing
 2. **Token Security**: 
-   - Tokens are hashed with SHA-256 (fast, cryptographically secure - tokens don't need bcrypt's slowness)
+   - Tokens always hashed with SHA-256 (fast, cryptographically secure - not configurable)
+   - SHA-256 chosen over bcrypt: tokens are random UUIDs and don't need intentional slowness
    - Prefix-based lookup for O(1) query performance
+   - Constant-time comparison using Buffer.compare() to prevent timing attacks
    - Configurable expiration (default: 24 hours)
    - Only first 8 characters logged in development mode
    - Automatic cleanup of expired tokens (async, non-blocking)
@@ -224,9 +235,9 @@ Passwords must:
 
 The system uses a two-part token structure for efficient lookup:
 - **Token Prefix** (first 8 chars): Indexed for fast database queries
-- **Token Hash**: bcrypt hash of full token for secure verification
+- **Token Hash**: SHA-256 hash of full token for secure verification
 
-This avoids the O(n) performance issue of comparing every unexpired token with bcrypt.
+This avoids the O(n) performance issue of comparing every unexpired token. SHA-256 provides 100x+ faster hashing than bcrypt while maintaining cryptographic security for tokens.
 
 ### Testing
 

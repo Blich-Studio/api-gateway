@@ -34,9 +34,10 @@ echo "================================"
 
 # Run the migration using separate parameters (safer than connection URI)
 # PGPASSWORD environment variable is used for password (no need to pass on command line)
+# Trap ensures password is unset even if script exits early
 export PGPASSWORD="${POSTGRES_PASSWORD}"
+trap 'unset PGPASSWORD' EXIT
 psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f "${MIGRATION_FILE}"
-unset PGPASSWORD
 
 echo "✅ Migration completed successfully"
 echo ""
