@@ -1,3 +1,25 @@
+-- ============================================================================
+-- DESTRUCTIVE MIGRATION: This migration will DELETE all existing tokens
+-- ============================================================================
+-- 
+-- IMPORTANT: This migration is destructive and will delete all existing 
+-- verification tokens. This is necessary because:
+--
+-- 1. Tokens are hashed with bcrypt before storage (for security)
+-- 2. We cannot extract the prefix from hashed tokens (bcrypt is one-way)
+-- 3. The new token lookup mechanism requires the prefix to be stored
+--
+-- IMPACT ON USERS:
+-- - All users with pending email verifications will need to request a new 
+--   verification email after this migration
+-- - No data loss for verified users - only pending verification tokens affected
+--
+-- RECOMMENDATION:
+-- - Run this migration during low-traffic periods
+-- - Consider notifying users about the need to re-verify if they have pending verifications
+-- - Monitor verification request volume after migration
+-- ============================================================================
+
 -- Add token_prefix column for efficient token lookup
 -- This allows us to query only tokens with matching prefix instead of all unexpired tokens
 

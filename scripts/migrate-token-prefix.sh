@@ -12,14 +12,21 @@ if [ -f .env ]; then
   set +a
 fi
 
-# Database connection string
-DB_CONNECTION="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+# Validate required environment variables
+if [ -z "${POSTGRES_HOST}" ] || [ -z "${POSTGRES_PORT}" ] || [ -z "${POSTGRES_USER}" ] || [ -z "${POSTGRES_DB}" ]; then
+  echo "❌ Error: Required environment variables not set"
+  echo "   Please ensure POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, and POSTGRES_DB are defined"
+  exit 1
+fi
 
 echo "🔧 Running migration: 002_add_token_prefix"
 echo "================================"
 
-# Run the migration
-psql "${DB_CONNECTION}" -f database/migrations/002_add_token_prefix.sql
+# Run the migration using separate parameters (safer than connection URI)
+# PGPASSWORD environment variable is used for password (no need to pass on command line)
+export PGPASSWORD="${POSTGRES_PASSWORD}"
+psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f database/migrations/002_add_token_prefix.sql
+unset PGPASSWORD
 
 echo "✅ Migration completed successfully"
 echo ""

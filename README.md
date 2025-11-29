@@ -145,8 +145,8 @@ POSTGRES_USER=your_user
 POSTGRES_PASSWORD=your_password
 
 # PostgreSQL SSL Configuration (for Cloud SQL)
-POSTGRES_SSL=true                          # Enable SSL connection
-POSTGRES_SSL_REJECT_UNAUTHORIZED=true      # Verify SSL certificate
+POSTGRES_SSL=true                          # Enable SSL connection (case-insensitive: true/TRUE/True)
+POSTGRES_SSL_REJECT_UNAUTHORIZED=true      # Verify SSL certificate (case-insensitive)
 POSTGRES_SSL_CA=/path/to/server-ca.pem     # Path to CA certificate (optional)
 
 # Email Configuration
@@ -175,6 +175,8 @@ APP_URL=http://localhost:3000               # Used for verification URLs
    ```bash
    ./scripts/migrate-token-prefix.sh
    ```
+   
+   ⚠️ **IMPORTANT**: This migration is **destructive** and will delete all existing verification tokens. This is necessary because tokens are hashed with bcrypt (one-way encryption), making it impossible to extract the prefix from existing tokens. Users with pending verifications will need to request new verification emails. Run during low-traffic periods.
 
 The migrations create:
 - `users` table with UUID, email, password_hash, is_verified
@@ -209,12 +211,14 @@ Passwords must:
    - Prefix-based lookup for O(1) query performance
    - Configurable expiration (default: 24 hours)
    - Only first 8 characters logged in development mode
-   - Automatic cleanup of expired tokens during verification flows
-3. **Timing Attack Protection**: Random delays (50-150ms) on verification failures to prevent enumeration
-4. **Rate Limiting**: Per-endpoint limits to prevent abuse (5 req/min register, 3 req/min resend)
-5. **XSS Prevention**: HTML escaping for all user-provided content in email templates
-6. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification (CA cert optional)
-7. **Efficient Token Cleanup**: Expired tokens automatically cleaned up during verification to prevent table bloat
+   - Automatic cleanup of expired tokens (async, non-blocking)
+3. **Timing Attack Protection**: 
+   - Random delays (50-150ms) on verification failures to prevent enumeration
+   - Constant-time token comparison (all tokens checked to prevent early exit timing leaks)
+4. **Race Condition Prevention**: Email existence checked before expensive password hashing to prevent CPU waste
+5. **Rate Limiting**: Per-endpoint limits to prevent abuse (5 req/min register, 3 req/min resend)
+6. **XSS Prevention**: HTML escaping for all user-provided content in email templates
+7. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification (CA cert optional, case-insensitive parsing)
 
 ### Performance Optimizations
 

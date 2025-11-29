@@ -37,11 +37,22 @@ export class UserAuthService {
   async register(registerDto: RegisterUserDto): Promise<RegisterResponse> {
     const { email, password, name } = registerDto
 
-    // Hash password
+    // Check if user already exists before expensive password hashing
+    const existsQuery = `SELECT 1 FROM users WHERE email = $1 LIMIT 1`
+    const existsResult = await this.postgresClient.query(existsQuery, [email])
+
+    if (existsResult.rowCount && existsResult.rowCount > 0) {
+      throw new ConflictException({
+        code: 'EMAIL_ALREADY_IN_USE',
+        message: 'A user with this email already exists',
+      })
+    }
+
+    // Hash password (expensive operation, only after confirming email is available)
     const passwordHash = await this.hashPassword(password)
 
     try {
-      // Create user - database constraint will prevent duplicates
+      // Create user
       const query = `
         INSERT INTO users (email, name, password_hash, is_verified, created_at)
         VALUES ($1, $2, $3, $4, $5)
@@ -122,10 +133,11 @@ export class UserAuthService {
     let matchedToken: DbRow | null = null
     let hasExpiredMatch = false
 
-    // Compare all tokens to prevent timing attacks
+    // Compare all tokens to prevent timing attacks (don't exit early)
+    // Use constant-time comparison by checking all tokens even after finding a match
     for (const row of tokenResult.rows) {
       const isMatch = await bcrypt.compare(token, row.token as string)
-      if (isMatch) {
+      if (isMatch && !matchedToken) {
         // Check if token is expired
         if (new Date(row.expires_at as string) < new Date()) {
           hasExpiredMatch = true
@@ -133,6 +145,7 @@ export class UserAuthService {
           matchedToken = row
         }
       }
+      // Continue checking remaining tokens to maintain constant-time behavior
     }
 
     if (hasExpiredMatch && !matchedToken) {
@@ -167,8 +180,10 @@ export class UserAuthService {
       matchedToken.token,
     ])
 
-    // Cleanup expired tokens to prevent table bloat
-    await this.cleanupExpiredTokens()
+    // Cleanup expired tokens asynchronously (fire-and-forget) to avoid blocking response
+    this.cleanupExpiredTokens().catch(error => {
+      this.logger.warn('Background cleanup failed', error)
+    })
 
     this.logger.log(`Email verified successfully: ${matchedToken.email as string}`)
 

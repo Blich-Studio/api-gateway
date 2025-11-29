@@ -28,11 +28,12 @@ export interface PostgresClient {
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
           ssl:
-            configService.get<string>('POSTGRES_SSL') === 'true'
+            configService.get<string>('POSTGRES_SSL', 'false').toLowerCase() === 'true'
               ? {
                   rejectUnauthorized:
-                    configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED', 'true') ===
-                    'true',
+                    configService
+                      .get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED', 'true')
+                      .toLowerCase() === 'true',
                   ...(configService.get<string>('POSTGRES_SSL_CA')
                     ? { ca: configService.get<string>('POSTGRES_SSL_CA') }
                     : {}),
