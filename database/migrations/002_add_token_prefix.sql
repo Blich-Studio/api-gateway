@@ -5,8 +5,8 @@
 -- IMPORTANT: This migration is destructive and will delete all existing 
 -- verification tokens. This is necessary because:
 --
--- 1. Tokens are hashed with bcrypt before storage (for security)
--- 2. We cannot extract the prefix from hashed tokens (bcrypt is one-way)
+-- 1. Tokens are hashed with SHA-256 before storage (for security)
+-- 2. We cannot extract the prefix from hashed tokens (SHA-256 is one-way)
 -- 3. The new token lookup mechanism requires the prefix to be stored
 --
 -- IMPACT ON USERS:
@@ -57,4 +57,4 @@ DROP INDEX IF EXISTS idx_verification_tokens_lookup;
 CREATE INDEX idx_verification_tokens_lookup ON verification_tokens(token_prefix, expires_at);
 
 -- Add comment explaining the optimization
-COMMENT ON COLUMN verification_tokens.token_prefix IS 'First 8 characters of unhashed token for efficient lookup';
+COMMENT ON COLUMN verification_tokens.token_prefix IS 'First 8 characters of the original token (before hashing) for efficient lookup';

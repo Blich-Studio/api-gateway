@@ -19,13 +19,23 @@ if [ -z "${POSTGRES_HOST}" ] || [ -z "${POSTGRES_PORT}" ] || [ -z "${POSTGRES_US
   exit 1
 fi
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+MIGRATION_FILE="${SCRIPT_DIR}/../database/migrations/002_add_token_prefix.sql"
+
+# Verify migration file exists
+if [ ! -f "${MIGRATION_FILE}" ]; then
+  echo "❌ Error: Migration file not found at ${MIGRATION_FILE}"
+  exit 1
+fi
+
 echo "🔧 Running migration: 002_add_token_prefix"
 echo "================================"
 
 # Run the migration using separate parameters (safer than connection URI)
 # PGPASSWORD environment variable is used for password (no need to pass on command line)
 export PGPASSWORD="${POSTGRES_PASSWORD}"
-psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f database/migrations/002_add_token_prefix.sql
+psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f "${MIGRATION_FILE}"
 unset PGPASSWORD
 
 echo "✅ Migration completed successfully"

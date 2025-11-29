@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { POSTGRES_CLIENT } from '../database/postgres.module'
 import { EMAIL_SERVICE } from '../email/email.service'
 import type { RegisterUserDto } from './dto/register-user.dto'
@@ -135,8 +135,10 @@ export class UserAuthService {
 
     // Compare all tokens to prevent timing attacks (don't exit early)
     // Use constant-time comparison by checking all tokens even after finding a match
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+
     for (const row of tokenResult.rows) {
-      const isMatch = await bcrypt.compare(token, row.token as string)
+      const isMatch = tokenHash === (row.token as string)
       if (isMatch && !matchedToken) {
         // Check if token is expired
         if (new Date(row.expires_at as string) < new Date()) {
@@ -246,8 +248,9 @@ export class UserAuthService {
 
   private async createVerificationToken(userId: string, email: string): Promise<string> {
     const token = randomUUID()
-    const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12)
-    const tokenHash = await bcrypt.hash(token, saltRounds) // Hash token for storage
+    // Use SHA-256 for token hashing (fast, cryptographically secure)
+    // Tokens don't need bcrypt's intentional slowness - only passwords do
+    const tokenHash = createHash('sha256').update(token).digest('hex')
     const tokenPrefix = token.substring(0, 8) // Store prefix for efficient lookup
     const expiryHours = this.configService.get<number>('VERIFICATION_TOKEN_EXPIRY_HOURS', 24)
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000)

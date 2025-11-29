@@ -157,7 +157,7 @@ EMAIL_FROM=noreply@blichstudio.com
 
 # Verification Token Configuration
 VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours
-BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds
+BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (for passwords only, tokens use SHA-256)
 
 # Application URL
 APP_URL=http://localhost:3000               # Used for verification URLs
@@ -176,7 +176,7 @@ APP_URL=http://localhost:3000               # Used for verification URLs
    ./scripts/migrate-token-prefix.sh
    ```
    
-   ⚠️ **IMPORTANT**: This migration is **destructive** and will delete all existing verification tokens. This is necessary because tokens are hashed with bcrypt (one-way encryption), making it impossible to extract the prefix from existing tokens. Users with pending verifications will need to request new verification emails. Run during low-traffic periods.
+   ⚠️ **IMPORTANT**: This migration is **destructive** and will delete all existing verification tokens. This is necessary because tokens are hashed with SHA-256 (one-way encryption), making it impossible to extract the prefix from existing tokens. Users with pending verifications will need to request new verification emails. Run during low-traffic periods.
 
 The migrations create:
 - `users` table with UUID, email, password_hash, is_verified
@@ -205,9 +205,9 @@ Passwords must:
 
 ### Security Features
 
-1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12) for both passwords and tokens
+1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12) for secure, intentionally slow hashing
 2. **Token Security**: 
-   - Tokens are hashed with bcrypt before storage (same configurable rounds as passwords)
+   - Tokens are hashed with SHA-256 (fast, cryptographically secure - tokens don't need bcrypt's slowness)
    - Prefix-based lookup for O(1) query performance
    - Configurable expiration (default: 24 hours)
    - Only first 8 characters logged in development mode
@@ -218,7 +218,7 @@ Passwords must:
 4. **Race Condition Prevention**: Email existence checked before expensive password hashing to prevent CPU waste
 5. **Rate Limiting**: Per-endpoint limits to prevent abuse (5 req/min register, 3 req/min resend)
 6. **XSS Prevention**: HTML escaping for all user-provided content in email templates
-7. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification (CA cert optional, case-insensitive parsing)
+7. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification (CA cert optional, robust boolean parsing for 'true', '1', 'yes')
 
 ### Performance Optimizations
 

@@ -12,6 +12,16 @@ export interface PostgresClient {
   end(): Promise<void>
 }
 
+/**
+ * Parse boolean value from string configuration
+ * Handles: 'true', '1', 'yes', 'TRUE', 'Yes', etc.
+ */
+function parseBoolean(value: string | undefined, defaultValue = false): boolean {
+  if (!value) return defaultValue
+  const normalized = value.toLowerCase().trim()
+  return normalized === 'true' || normalized === '1' || normalized === 'yes'
+}
+
 @Module({
   imports: [ConfigModule],
   providers: [
@@ -27,18 +37,17 @@ export interface PostgresClient {
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
-          ssl:
-            configService.get<string>('POSTGRES_SSL', 'false').toLowerCase() === 'true'
-              ? {
-                  rejectUnauthorized:
-                    configService
-                      .get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED', 'true')
-                      .toLowerCase() === 'true',
-                  ...(configService.get<string>('POSTGRES_SSL_CA')
-                    ? { ca: configService.get<string>('POSTGRES_SSL_CA') }
-                    : {}),
-                }
-              : false,
+          ssl: parseBoolean(configService.get<string>('POSTGRES_SSL'))
+            ? {
+                rejectUnauthorized: parseBoolean(
+                  configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED'),
+                  true
+                ),
+                ...(configService.get<string>('POSTGRES_SSL_CA')
+                  ? { ca: configService.get<string>('POSTGRES_SSL_CA') }
+                  : {}),
+              }
+            : false,
         })
       },
       inject: [ConfigService],
