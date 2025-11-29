@@ -78,7 +78,7 @@ export class UserAuthService {
       // Handle race condition where duplicate email was inserted
       if (error instanceof Error && 'code' in error && error.code === '23505') {
         throw new ConflictException({
-          code: 'EMAIL_ALREADY_IN_USE',
+          code: 'EMAIL_ALREADY_EXISTS',
           message: 'A user with this email already exists',
         })
       }
@@ -108,30 +108,34 @@ export class UserAuthService {
 
     // Check if any token exists (even expired) for better error messages
     if (tokenResult.rowCount === 0) {
+      // Add random delay to prevent timing attacks (50-150ms)
+      await this.addRandomDelay(50, 150)
       throw new BadRequestException({
         code: 'INVALID_VERIFICATION_TOKEN',
         message: 'The verification token is invalid',
       })
     }
 
-    // Find matching token by comparing hashes
+    // Find matching token by comparing hashes (constant-time for all tokens)
     let matchedToken: DbRow | null = null
     let hasExpiredMatch = false
 
+    // Compare all tokens to prevent timing attacks
     for (const row of tokenResult.rows) {
       const isMatch = await bcrypt.compare(token, row.token as string)
       if (isMatch) {
         // Check if token is expired
         if (new Date(row.expires_at as string) < new Date()) {
           hasExpiredMatch = true
-          continue
+        } else {
+          matchedToken = row
         }
-        matchedToken = row
-        break
       }
     }
 
     if (hasExpiredMatch && !matchedToken) {
+      // Add random delay to prevent timing attacks (50-150ms)
+      await this.addRandomDelay(50, 150)
       throw new BadRequestException({
         code: 'VERIFICATION_TOKEN_EXPIRED',
         message: 'The verification token has expired',
@@ -139,6 +143,8 @@ export class UserAuthService {
     }
 
     if (!matchedToken) {
+      // Add random delay to prevent timing attacks (50-150ms)
+      await this.addRandomDelay(50, 150)
       throw new BadRequestException({
         code: 'INVALID_VERIFICATION_TOKEN',
         message: 'The verification token is invalid',
@@ -247,5 +253,17 @@ export class UserAuthService {
   private async hashPassword(password: string): Promise<string> {
     const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12)
     return bcrypt.hash(password, saltRounds)
+  }
+
+  /**
+   * Adds a random delay to prevent timing attacks
+   * @param minMs Minimum delay in milliseconds
+   * @param maxMs Maximum delay in milliseconds
+   */
+  private async addRandomDelay(minMs: number, maxMs: number): Promise<void> {
+    const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+    return new Promise(resolve => {
+      setTimeout(resolve, delay)
+    })
   }
 }

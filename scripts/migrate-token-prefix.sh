@@ -5,9 +5,11 @@
 
 set -e
 
-# Load environment variables if .env file exists
+# Safely load environment variables if .env file exists
 if [ -f .env ]; then
-  export $(cat .env | grep -v '^#' | xargs)
+  set -a
+  source .env
+  set +a
 fi
 
 # Database connection string
@@ -21,9 +23,5 @@ psql "${DB_CONNECTION}" -f database/migrations/002_add_token_prefix.sql
 
 echo "✅ Migration completed successfully"
 echo ""
-echo "⚠️  NOTE: Existing tokens will have NULL token_prefix."
-echo "   They will not be findable via the new lookup mechanism."
-echo "   Consider deleting old tokens or regenerating them."
-echo ""
-echo "   To clean up old tokens, run:"
-echo "   DELETE FROM verification_tokens WHERE token_prefix IS NULL;"
+echo "⚠️  NOTE: Existing tokens with NULL token_prefix have been deleted."
+echo "   Users with active verification tokens will need to request a new one."

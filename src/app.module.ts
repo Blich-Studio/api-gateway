@@ -3,7 +3,7 @@ import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
-import { AuthModule } from './modules/auth/auth.module.js'
+import { AuthModule } from './modules/auth/auth.module'
 
 @Module({
   imports: [

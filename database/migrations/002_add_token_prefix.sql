@@ -4,6 +4,14 @@
 ALTER TABLE verification_tokens
 ADD COLUMN token_prefix VARCHAR(8);
 
+-- Delete existing tokens since we can't backfill their prefixes (tokens are hashed)
+-- Users will need to request new verification emails
+DELETE FROM verification_tokens WHERE token_prefix IS NULL;
+
+-- Make token_prefix required going forward
+ALTER TABLE verification_tokens
+ALTER COLUMN token_prefix SET NOT NULL;
+
 -- Create index for efficient lookup by token prefix
 CREATE INDEX idx_verification_tokens_prefix ON verification_tokens(token_prefix);
 

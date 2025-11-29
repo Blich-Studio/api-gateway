@@ -116,10 +116,13 @@ The API Gateway includes a complete user registration system with email verifica
 - ✅ Email-based registration with secure password hashing (bcrypt)
 - ✅ Email verification with expiring tokens (configurable, default 24 hours)
 - ✅ Rate limiting to prevent abuse (5 req/min for registration, 3 req/min for resend)
-- ✅ XSS-safe HTML email templates
-- ✅ Optimized token lookup with prefix-based indexing
+- ✅ XSS-safe HTML email templates with proper escaping
+- ✅ Optimized token lookup with prefix-based indexing (O(1) performance)
+- ✅ Timing attack protection with random delays
 - ✅ Comprehensive error handling with specific error codes
 - ✅ Rollback migrations included
+
+> **Note**: Email templates are currently inline in the code. For better maintainability when adding more templates, consider extracting them to separate `.html` or `.hbs` files.
 
 ### REST Endpoints
 
@@ -206,9 +209,11 @@ Passwords must:
    - Prefix-based lookup for O(1) query performance
    - Configurable expiration (default: 24 hours)
    - Only first 8 characters logged in development mode
-3. **Rate Limiting**: Per-endpoint limits to prevent abuse
-4. **XSS Prevention**: HTML escaping in email templates
-5. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification
+3. **Timing Attack Protection**: Random delays (50-150ms) on verification failures to prevent enumeration
+4. **Rate Limiting**: Per-endpoint limits to prevent abuse (5 req/min register, 3 req/min resend)
+5. **XSS Prevention**: HTML escaping for all user-provided content in email templates
+6. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification
+7. **Efficient Token Cleanup**: Only expired tokens are deleted, active tokens remain valid
 
 ### Performance Optimizations
 

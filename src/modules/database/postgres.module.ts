@@ -5,7 +5,10 @@ import { Pool, type QueryResult } from 'pg'
 export const POSTGRES_CLIENT = 'POSTGRES_CLIENT'
 
 export interface PostgresClient {
-  query(text: string, params?: unknown[]): Promise<QueryResult<Record<string, unknown>>>
+  query<T extends Record<string, unknown> = Record<string, unknown>>(
+    text: string,
+    params?: unknown[]
+  ): Promise<QueryResult<T>>
   end(): Promise<void>
 }
 

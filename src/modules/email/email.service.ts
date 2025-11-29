@@ -84,8 +84,9 @@ export class EmailService {
   }
 
   private getVerificationEmailTemplate(name: string, verificationUrl: string): string {
-    // Escape HTML to prevent XSS attacks (only for name, URLs are safe in href)
+    // Escape HTML to prevent XSS attacks
     const safeName = escapeHtml(name)
+    const safeUrlText = escapeHtml(verificationUrl)
 
     return `
       <!DOCTYPE html>
@@ -134,7 +135,7 @@ export class EmailService {
             <p>Click the button below to verify your email:</p>
             <a href="${verificationUrl}" class="button">Verify Email Address</a>
             <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #007bff;">${verificationUrl}</p>
+            <p style="word-break: break-all; color: #007bff;">${safeUrlText}</p>
             <p><strong>This link will expire in 24 hours.</strong></p>
             <div class="footer">
               <p>If you didn't create an account, you can safely ignore this email.</p>
