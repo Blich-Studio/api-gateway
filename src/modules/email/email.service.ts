@@ -87,6 +87,7 @@ export class EmailService {
     // Escape HTML to prevent XSS attacks
     const safeName = escapeHtml(name)
     const safeUrlText = escapeHtml(verificationUrl)
+    const companyName = this.configService.get<string>('COMPANY_NAME', 'Blich Studio')
 
     return `
       <!DOCTYPE html>
@@ -139,7 +140,7 @@ export class EmailService {
             <p><strong>This link will expire in 24 hours.</strong></p>
             <div class="footer">
               <p>If you didn't create an account, you can safely ignore this email.</p>
-              <p>© ${new Date().getFullYear()} Blich Studio. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} ${escapeHtml(companyName)}. All rights reserved.</p>
             </div>
           </div>
         </body>

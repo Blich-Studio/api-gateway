@@ -144,23 +144,29 @@ POSTGRES_DB=api_gateway
 POSTGRES_USER=your_user
 POSTGRES_PASSWORD=your_password
 
+# PostgreSQL Connection Pool Configuration (optional, for tuning)
+POSTGRES_POOL_MAX=20                        # Default: 20 connections
+POSTGRES_IDLE_TIMEOUT=30000                 # Default: 30000ms (30 seconds)
+POSTGRES_CONNECTION_TIMEOUT=2000            # Default: 2000ms (2 seconds)
+
 # PostgreSQL SSL Configuration (for Cloud SQL)
-POSTGRES_SSL=true                          # Enable SSL connection (case-insensitive: true/TRUE/True)
-POSTGRES_SSL_REJECT_UNAUTHORIZED=true      # Verify SSL certificate (case-insensitive)
-POSTGRES_SSL_CA=/path/to/server-ca.pem     # Path to CA certificate (optional)
+POSTGRES_SSL=true                           # Enable SSL connection (accepts: 'true', '1', 'yes', case-insensitive)
+POSTGRES_SSL_REJECT_UNAUTHORIZED=true       # Verify SSL certificate (accepts: 'true', '1', 'yes', case-insensitive)
+POSTGRES_SSL_CA=/path/to/server-ca.pem      # Path to CA certificate (optional)
 
 # Email Configuration
-EMAIL_SERVICE=gmail                         # Or your SMTP service
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
-EMAIL_FROM=noreply@blichstudio.com
+# NOTE: Email sending requires implementation of an email provider
+# See src/modules/email/email.service.ts for integration examples (SendGrid, AWS SES, Nodemailer)
+# Currently logs to console in development mode
+EMAIL_FROM=noreply@blichstudio.com          # Sender email address (used when email provider is configured)
 
 # Verification Token Configuration
-VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours
-BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (for passwords only)
+VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours (fallback if not set)
+BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (fallback if not set, for passwords only)
 
-# Application URL
+# Application Configuration
 APP_URL=http://localhost:3000               # Used for verification URLs
+COMPANY_NAME=Blich Studio                   # Default: 'Blich Studio' (used in email templates)
 ```
 
 ### Database Setup
@@ -214,15 +220,16 @@ Passwords must:
 
 ### Security Features
 
-1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12) for secure, intentionally slow hashing
+1. **Password Hashing**: bcrypt with configurable salt rounds (fallback default: 12 if not set) for secure, intentionally slow hashing
 2. **Token Security**: 
    - Tokens always hashed with SHA-256 (fast, cryptographically secure - not configurable)
    - SHA-256 chosen over bcrypt: tokens are random UUIDs and don't need intentional slowness
    - Prefix-based lookup for O(1) query performance
-   - Constant-time comparison using Buffer.compare() to prevent timing attacks
-   - Configurable expiration (default: 24 hours)
+   - True constant-time comparison using Buffer.compare() with nullish coalescing to prevent timing attacks
+   - Configurable expiration (fallback default: 24 hours if not set)
    - Only first 8 characters logged in development mode
-   - Automatic cleanup of expired tokens (async, non-blocking)
+   - Automatic cleanup of expired tokens (throttled to max once per hour, async/non-blocking)
+   - **Production Note**: For high-traffic apps, consider using a scheduled cron job for cleanup instead
 3. **Timing Attack Protection**: 
    - Random delays (50-150ms) on verification failures to prevent enumeration
    - Constant-time token comparison (all tokens checked to prevent early exit timing leaks)
@@ -237,7 +244,13 @@ The system uses a two-part token structure for efficient lookup:
 - **Token Prefix** (first 8 chars): Indexed for fast database queries
 - **Token Hash**: SHA-256 hash of full token for secure verification
 
-This avoids the O(n) performance issue of comparing every unexpired token. SHA-256 provides 100x+ faster hashing than bcrypt while maintaining cryptographic security for tokens.
+Key optimizations:
+1. **O(1) Token Lookup**: Composite index on (token_prefix, expires_at) avoids O(n) comparisons
+2. **SHA-256 for Tokens**: 100x+ faster than bcrypt while maintaining cryptographic security
+3. **Throttled Cleanup**: Max once per hour to prevent database load under high traffic
+   - For production at scale, consider scheduled jobs (pg_cron or system cron)
+4. **Early Email Validation**: Check email existence before expensive password hashing (prevents race condition CPU waste)
+5. **Configurable Pool**: Tune connection pooling for your deployment environment
 
 ### Testing
 

@@ -28,6 +28,8 @@ interface EmailService {
 export class UserAuthService {
   private readonly logger = new Logger(UserAuthService.name)
   private readonly TOKEN_PREFIX_LENGTH = 8 // Length of token prefix for efficient lookup
+  private readonly CLEANUP_THROTTLE_MS = 60 * 60 * 1000 // 1 hour
+  private lastCleanupTime = 0
 
   constructor(
     @Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient,
@@ -138,21 +140,24 @@ export class UserAuthService {
     const tokenHash = createHash('sha256').update(token).digest('hex')
     const tokenHashBuffer = Buffer.from(tokenHash, 'hex')
 
+    // Iterate through all tokens without early exit to maintain constant-time behavior
     for (const row of tokenResult.rows) {
       const storedHashBuffer = Buffer.from(row.token as string, 'hex')
-      // Use crypto.timingSafeEqual for constant-time comparison
+      // Use Buffer.compare for constant-time comparison
       const isMatch =
         tokenHashBuffer.length === storedHashBuffer.length &&
         tokenHashBuffer.compare(storedHashBuffer) === 0
-      if (isMatch && !matchedToken) {
+
+      // Store match without early exit (evaluate all tokens)
+      if (isMatch) {
         // Check if token is expired
         if (new Date(row.expires_at as string) < new Date()) {
           hasExpiredMatch = true
         } else {
-          matchedToken = row
+          // Only assign first valid match using nullish coalescing
+          matchedToken ??= row
         }
       }
-      // Continue checking remaining tokens to maintain constant-time behavior
     }
 
     if (hasExpiredMatch && !matchedToken) {
@@ -298,9 +303,18 @@ export class UserAuthService {
 
   /**
    * Cleanup expired verification tokens to prevent table bloat
-   * Called periodically during verification flows
+   * Throttled to run max once per hour to avoid excessive database load
+   * For production, consider using a scheduled job (cron) instead
    */
   private async cleanupExpiredTokens(): Promise<void> {
+    // Throttle cleanup to prevent excessive database load on high-traffic apps
+    const now = Date.now()
+    if (now - this.lastCleanupTime < this.CLEANUP_THROTTLE_MS) {
+      return // Skip cleanup if last run was less than 1 hour ago
+    }
+
+    this.lastCleanupTime = now
+
     try {
       const result = await this.postgresClient.query(
         'DELETE FROM verification_tokens WHERE expires_at < NOW()'

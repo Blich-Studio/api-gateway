@@ -49,11 +49,13 @@ END $$;
 ALTER TABLE verification_tokens
 ALTER COLUMN token_prefix SET NOT NULL;
 
--- Create index for efficient lookup by token prefix
-CREATE INDEX idx_verification_tokens_prefix ON verification_tokens(token_prefix);
+-- RECOMMENDED: Check token count before running this migration
+-- Run this query first: SELECT COUNT(*) FROM verification_tokens WHERE token_prefix IS NULL;
 
--- Update the composite index to include token_prefix
+-- Create composite index for efficient lookup (no separate single-column index needed)
+-- PostgreSQL can use this for token_prefix-only queries (leftmost prefix rule)
 DROP INDEX IF EXISTS idx_verification_tokens_lookup;
+DROP INDEX IF EXISTS idx_verification_tokens_prefix; -- Remove if exists from previous runs
 CREATE INDEX idx_verification_tokens_lookup ON verification_tokens(token_prefix, expires_at);
 
 -- Add comment explaining the optimization

@@ -45,9 +45,9 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
           user: configService.getOrThrow<string>('POSTGRES_USER'),
           password: configService.getOrThrow<string>('POSTGRES_PASSWORD'),
           database: configService.getOrThrow<string>('POSTGRES_DB'),
-          max: 20,
-          idleTimeoutMillis: 30000,
-          connectionTimeoutMillis: 2000,
+          max: configService.get<number>('POSTGRES_POOL_MAX', 20),
+          idleTimeoutMillis: configService.get<number>('POSTGRES_IDLE_TIMEOUT', 30000),
+          connectionTimeoutMillis: configService.get<number>('POSTGRES_CONNECTION_TIMEOUT', 2000),
           ssl: sslEnabled
             ? {
                 rejectUnauthorized: parseBoolean(sslRejectUnauthorized, true),

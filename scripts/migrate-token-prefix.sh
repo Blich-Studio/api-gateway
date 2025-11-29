@@ -2,6 +2,9 @@
 
 # Migration script for adding token_prefix column
 # Run this script to apply the migration to your database
+#
+# IMPORTANT: Execute this script, do NOT source it (use ./script.sh, not . ./script.sh)
+# Sourcing will prevent the trap from working correctly and may leak PGPASSWORD
 
 set -e
 
