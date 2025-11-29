@@ -3,6 +3,18 @@ import { ConfigService } from '@nestjs/config'
 
 export const EMAIL_SERVICE = 'EMAIL_SERVICE'
 
+/**
+ * Escapes HTML special characters to prevent XSS attacks
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 export interface EmailVerificationData {
   email: string
   name: string
@@ -72,6 +84,10 @@ export class EmailService {
   }
 
   private getVerificationEmailTemplate(name: string, verificationUrl: string): string {
+    // Escape HTML to prevent XSS attacks
+    const safeName = escapeHtml(name)
+    const safeUrl = escapeHtml(verificationUrl)
+
     return `
       <!DOCTYPE html>
       <html>
@@ -114,12 +130,12 @@ export class EmailService {
         </head>
         <body>
           <div class="container">
-            <h2>Welcome, ${name}!</h2>
+            <h2>Welcome, ${safeName}!</h2>
             <p>Thank you for registering. Please verify your email address to complete your registration.</p>
             <p>Click the button below to verify your email:</p>
             <a href="${verificationUrl}" class="button">Verify Email Address</a>
             <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #007bff;">${verificationUrl}</p>
+            <p style="word-break: break-all; color: #007bff;">${safeUrl}</p>
             <p><strong>This link will expire in 24 hours.</strong></p>
             <div class="footer">
               <p>If you didn't create an account, you can safely ignore this email.</p>
