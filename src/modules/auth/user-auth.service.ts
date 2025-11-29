@@ -1,7 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common'
+import { BadRequestException, ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
 import { randomUUID } from 'node:crypto'
+import { POSTGRES_CLIENT } from '../database/postgres.module'
+import { EMAIL_SERVICE } from '../email/email.service'
 import type { RegisterUserDto } from './dto/register-user.dto'
 import type { ResendVerificationDto } from './dto/resend-verification.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
@@ -27,8 +29,8 @@ export class UserAuthService {
   private readonly logger = new Logger(UserAuthService.name)
 
   constructor(
-    private readonly postgresClient: PostgresClient,
-    private readonly emailService: EmailService,
+    @Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient,
+    @Inject(EMAIL_SERVICE) private readonly emailService: EmailService,
     private readonly configService: ConfigService
   ) {}
 
@@ -165,6 +167,9 @@ export class UserAuthService {
       matchedToken.token,
     ])
 
+    // Cleanup expired tokens to prevent table bloat
+    await this.cleanupExpiredTokens()
+
     this.logger.log(`Email verified successfully: ${matchedToken.email as string}`)
 
     return { message: 'Email verified successfully' }
@@ -226,7 +231,8 @@ export class UserAuthService {
 
   private async createVerificationToken(userId: string, email: string): Promise<string> {
     const token = randomUUID()
-    const tokenHash = await bcrypt.hash(token, 10) // Hash token for storage
+    const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12)
+    const tokenHash = await bcrypt.hash(token, saltRounds) // Hash token for storage
     const tokenPrefix = token.substring(0, 8) // Store prefix for efficient lookup
     const expiryHours = this.configService.get<number>('VERIFICATION_TOKEN_EXPIRY_HOURS', 24)
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000)
@@ -265,5 +271,23 @@ export class UserAuthService {
     return new Promise(resolve => {
       setTimeout(resolve, delay)
     })
+  }
+
+  /**
+   * Cleanup expired verification tokens to prevent table bloat
+   * Called periodically during verification flows
+   */
+  private async cleanupExpiredTokens(): Promise<void> {
+    try {
+      const result = await this.postgresClient.query(
+        'DELETE FROM verification_tokens WHERE expires_at < NOW()'
+      )
+      if (result.rowCount && result.rowCount > 0) {
+        this.logger.log(`Cleaned up ${result.rowCount} expired verification token(s)`)
+      }
+    } catch (error) {
+      // Log but don't throw - cleanup failure shouldn't break verification flow
+      this.logger.warn('Failed to cleanup expired tokens', error)
+    }
   }
 }

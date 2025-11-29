@@ -33,7 +33,9 @@ export interface PostgresClient {
                   rejectUnauthorized:
                     configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED', 'true') ===
                     'true',
-                  ca: configService.get<string>('POSTGRES_SSL_CA'),
+                  ...(configService.get<string>('POSTGRES_SSL_CA')
+                    ? { ca: configService.get<string>('POSTGRES_SSL_CA') }
+                    : {}),
                 }
               : false,
         })

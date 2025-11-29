@@ -203,17 +203,18 @@ Passwords must:
 
 ### Security Features
 
-1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12)
+1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12) for both passwords and tokens
 2. **Token Security**: 
-   - Tokens are hashed with bcrypt before storage
+   - Tokens are hashed with bcrypt before storage (same configurable rounds as passwords)
    - Prefix-based lookup for O(1) query performance
    - Configurable expiration (default: 24 hours)
    - Only first 8 characters logged in development mode
+   - Automatic cleanup of expired tokens during verification flows
 3. **Timing Attack Protection**: Random delays (50-150ms) on verification failures to prevent enumeration
 4. **Rate Limiting**: Per-endpoint limits to prevent abuse (5 req/min register, 3 req/min resend)
 5. **XSS Prevention**: HTML escaping for all user-provided content in email templates
-6. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification
-7. **Efficient Token Cleanup**: Only expired tokens are deleted, active tokens remain valid
+6. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification (CA cert optional)
+7. **Efficient Token Cleanup**: Expired tokens automatically cleaned up during verification to prevent table bloat
 
 ### Performance Optimizations
 

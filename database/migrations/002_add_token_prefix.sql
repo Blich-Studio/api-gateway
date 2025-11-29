@@ -4,9 +4,24 @@
 ALTER TABLE verification_tokens
 ADD COLUMN token_prefix VARCHAR(8);
 
--- Delete existing tokens since we can't backfill their prefixes (tokens are hashed)
--- Users will need to request new verification emails
-DELETE FROM verification_tokens WHERE token_prefix IS NULL;
+-- Check and log existing tokens before deletion
+DO $$
+DECLARE
+  token_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO token_count FROM verification_tokens WHERE token_prefix IS NULL;
+  
+  IF token_count > 0 THEN
+    RAISE NOTICE 'WARNING: Deleting % existing verification token(s)', token_count;
+    RAISE NOTICE 'Users will need to request new verification emails';
+    
+    -- Delete existing tokens since we can't backfill their prefixes (tokens are hashed)
+    DELETE FROM verification_tokens WHERE token_prefix IS NULL;
+    RAISE NOTICE 'Deleted % token(s)', token_count;
+  ELSE
+    RAISE NOTICE 'No existing tokens to delete';
+  END IF;
+END $$;
 
 -- Make token_prefix required going forward
 ALTER TABLE verification_tokens
