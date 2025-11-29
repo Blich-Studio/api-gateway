@@ -82,6 +82,12 @@ export class UserAuthService {
           message: 'A user with this email already exists',
         })
       }
+
+      // Log unexpected database errors for debugging
+      this.logger.error(
+        'Unexpected error during user registration',
+        error instanceof Error ? error.stack : error
+      )
       throw error
     }
   }
@@ -89,28 +95,28 @@ export class UserAuthService {
   async verifyEmail(verifyDto: VerifyEmailDto): Promise<VerifyEmailResponse> {
     const { token } = verifyDto
 
-    // Find verification token
+    // Find all verification tokens for potential match (need to hash compare)
     const tokenQuery = `
       SELECT token, user_id, email, expires_at
       FROM verification_tokens
-      WHERE token = $1
+      WHERE expires_at > NOW()
     `
-    const tokenResult = await this.postgresClient.query(tokenQuery, [token])
+    const tokenResult = await this.postgresClient.query(tokenQuery)
 
-    if (tokenResult.rowCount === 0) {
+    // Find matching token by comparing hashes
+    let matchedToken: DbRow | null = null
+    for (const row of tokenResult.rows) {
+      const isMatch = await bcrypt.compare(token, row.token as string)
+      if (isMatch) {
+        matchedToken = row
+        break
+      }
+    }
+
+    if (!matchedToken) {
       throw new BadRequestException({
         code: 'INVALID_VERIFICATION_TOKEN',
         message: 'The verification token is invalid',
-      })
-    }
-
-    const [verificationToken] = tokenResult.rows
-
-    // Check if token is expired
-    if (new Date(verificationToken.expires_at as string) < new Date()) {
-      throw new BadRequestException({
-        code: 'VERIFICATION_TOKEN_EXPIRED',
-        message: 'The verification token has expired',
       })
     }
 
@@ -121,12 +127,14 @@ export class UserAuthService {
       WHERE id = $1
       RETURNING id, email, is_verified
     `
-    await this.postgresClient.query(updateQuery, [verificationToken.user_id as string])
+    await this.postgresClient.query(updateQuery, [matchedToken.user_id])
 
-    // Delete used token
-    await this.postgresClient.query('DELETE FROM verification_tokens WHERE token = $1', [token])
+    // Delete used token (delete by hash)
+    await this.postgresClient.query('DELETE FROM verification_tokens WHERE token = $1', [
+      matchedToken.token,
+    ])
 
-    this.logger.log(`Email verified successfully: ${verificationToken.email as string}`)
+    this.logger.log(`Email verified successfully: ${matchedToken.email as string}`)
 
     return { message: 'Email verified successfully' }
   }
@@ -187,21 +195,31 @@ export class UserAuthService {
 
   private async createVerificationToken(userId: string, email: string): Promise<string> {
     const token = randomUUID()
+    const tokenHash = await bcrypt.hash(token, 10) // Hash token for storage
     const expiryHours = this.configService.get<number>('VERIFICATION_TOKEN_EXPIRY_HOURS', 24)
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000)
 
-    const query = `
-      INSERT INTO verification_tokens (token, user_id, email, expires_at)
-      VALUES ($1, $2, $3, $4)
-      RETURNING token
-    `
-    const result = await this.postgresClient.query(query, [token, userId, email, expiresAt])
+    try {
+      const query = `
+        INSERT INTO verification_tokens (token, user_id, email, expires_at)
+        VALUES ($1, $2, $3, $4)
+        RETURNING token
+      `
+      await this.postgresClient.query(query, [tokenHash, userId, email, expiresAt])
 
-    return result.rows[0]?.token as string
+      // Return unhashed token to send to user
+      return token
+    } catch (error: unknown) {
+      this.logger.error(
+        'Error creating verification token',
+        error instanceof Error ? error.stack : error
+      )
+      throw error
+    }
   }
 
   private async hashPassword(password: string): Promise<string> {
-    const saltRounds = 12
+    const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12)
     return bcrypt.hash(password, saltRounds)
   }
 }

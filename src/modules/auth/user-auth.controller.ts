@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { Throttle } from '@nestjs/throttler'
 import { RegisterUserDto } from './dto/register-user.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
@@ -53,6 +54,7 @@ export class UserAuthController {
       },
     },
   })
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   async register(@Body() registerDto: RegisterUserDto) {
     return { data: await this.userAuthService.register(registerDto) }
   }
@@ -139,6 +141,7 @@ export class UserAuthController {
       },
     },
   })
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute
   async resendVerification(@Body() resendDto: ResendVerificationDto) {
     return { data: await this.userAuthService.resendVerification(resendDto) }
   }

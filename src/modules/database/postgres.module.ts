@@ -24,7 +24,15 @@ export interface PostgresClient {
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
-          ssl: process.env.NODE_ENV === 'production',
+          ssl:
+            configService.get<string>('POSTGRES_SSL') === 'true'
+              ? {
+                  rejectUnauthorized:
+                    configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED', 'true') ===
+                    'true',
+                  ca: configService.get<string>('POSTGRES_SSL_CA'),
+                }
+              : false,
         })
       },
       inject: [ConfigService],
