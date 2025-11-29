@@ -15,7 +15,7 @@ export class EmailService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  sendVerificationEmail(data: EmailVerificationData): void {
+  async sendVerificationEmail(data: EmailVerificationData): Promise<void> {
     const { email, name, token } = data
     const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000')
     const verificationUrl = `${appUrl}/auth/verify?token=${token}`
@@ -67,6 +67,8 @@ export class EmailService {
     }
 
     this.logger.log(`Verification email sent successfully to: ${email}`)
+
+    return Promise.resolve()
   }
 
   private getVerificationEmailTemplate(name: string, verificationUrl: string): string {

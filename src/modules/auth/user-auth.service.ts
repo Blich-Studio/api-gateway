@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import * as bcrypt from 'bcrypt'
 import * as crypto from 'node:crypto'
 import type { RegisterUserDto } from './dto/register-user.dto'
 import type { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -44,7 +45,7 @@ export class UserAuthService {
     }
 
     // Hash password
-    const passwordHash = this.hashPassword(password)
+    const passwordHash = await this.hashPassword(password)
 
     // Create user
     const query = `
@@ -203,9 +204,8 @@ export class UserAuthService {
     return result.rows[0]?.token as string
   }
 
-  private hashPassword(password: string): string {
-    // In production, use bcrypt or similar
-    // This is a simplified version for demonstration
-    return crypto.createHash('sha256').update(password).digest('hex')
+  private async hashPassword(password: string): Promise<string> {
+    const saltRounds = 12
+    return bcrypt.hash(password, saltRounds)
   }
 }

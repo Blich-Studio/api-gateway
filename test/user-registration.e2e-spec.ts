@@ -84,7 +84,7 @@ describe('User Registration (e2e)', () => {
   })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Feature: User registration', () => {

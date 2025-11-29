@@ -54,7 +54,7 @@ export class UserAuthController {
     },
   })
   async register(@Body() registerDto: RegisterUserDto) {
-    return this.userAuthService.register(registerDto)
+    return { data: await this.userAuthService.register(registerDto) }
   }
 
   @Post('verify-email')
@@ -97,7 +97,7 @@ export class UserAuthController {
     },
   })
   async verifyEmail(@Body() verifyDto: VerifyEmailDto) {
-    return this.userAuthService.verifyEmail(verifyDto)
+    return { data: await this.userAuthService.verifyEmail(verifyDto) }
   }
 
   @Post('resend-verification')
@@ -140,6 +140,6 @@ export class UserAuthController {
     },
   })
   async resendVerification(@Body() resendDto: ResendVerificationDto) {
-    return this.userAuthService.resendVerification(resendDto)
+    return { data: await this.userAuthService.resendVerification(resendDto) }
   }
 }
