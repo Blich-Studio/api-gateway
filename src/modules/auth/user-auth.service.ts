@@ -95,22 +95,47 @@ export class UserAuthService {
   async verifyEmail(verifyDto: VerifyEmailDto): Promise<VerifyEmailResponse> {
     const { token } = verifyDto
 
-    // Find all verification tokens for potential match (need to hash compare)
+    // Extract token prefix for efficient lookup (first 8 chars)
+    const tokenPrefix = token.substring(0, 8)
+
+    // Query tokens with matching prefix
     const tokenQuery = `
-      SELECT token, user_id, email, expires_at
+      SELECT token, user_id, email, expires_at, token_prefix
       FROM verification_tokens
-      WHERE expires_at > NOW()
+      WHERE token_prefix = $1
     `
-    const tokenResult = await this.postgresClient.query(tokenQuery)
+    const tokenResult = await this.postgresClient.query(tokenQuery, [tokenPrefix])
+
+    // Check if any token exists (even expired) for better error messages
+    if (tokenResult.rowCount === 0) {
+      throw new BadRequestException({
+        code: 'INVALID_VERIFICATION_TOKEN',
+        message: 'The verification token is invalid',
+      })
+    }
 
     // Find matching token by comparing hashes
     let matchedToken: DbRow | null = null
+    let hasExpiredMatch = false
+
     for (const row of tokenResult.rows) {
       const isMatch = await bcrypt.compare(token, row.token as string)
       if (isMatch) {
+        // Check if token is expired
+        if (new Date(row.expires_at as string) < new Date()) {
+          hasExpiredMatch = true
+          continue
+        }
         matchedToken = row
         break
       }
+    }
+
+    if (hasExpiredMatch && !matchedToken) {
+      throw new BadRequestException({
+        code: 'VERIFICATION_TOKEN_EXPIRED',
+        message: 'The verification token has expired',
+      })
     }
 
     if (!matchedToken) {
@@ -196,16 +221,17 @@ export class UserAuthService {
   private async createVerificationToken(userId: string, email: string): Promise<string> {
     const token = randomUUID()
     const tokenHash = await bcrypt.hash(token, 10) // Hash token for storage
+    const tokenPrefix = token.substring(0, 8) // Store prefix for efficient lookup
     const expiryHours = this.configService.get<number>('VERIFICATION_TOKEN_EXPIRY_HOURS', 24)
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000)
 
     try {
       const query = `
-        INSERT INTO verification_tokens (token, user_id, email, expires_at)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO verification_tokens (token, token_prefix, user_id, email, expires_at)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING token
       `
-      await this.postgresClient.query(query, [tokenHash, userId, email, expiresAt])
+      await this.postgresClient.query(query, [tokenHash, tokenPrefix, userId, email, expiresAt])
 
       // Return unhashed token to send to user
       return token

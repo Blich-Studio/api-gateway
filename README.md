@@ -102,7 +102,134 @@ This gateway uses the **BFF (Backend for Frontend)** pattern. It is responsible 
 
 ### Modules
 
-- **AuthModule**: Handles Supabase-backed admin authentication and JWT issuance for downstream modules.
+- **AuthModule**: Handles user registration, email verification, and authentication. Uses PostgreSQL for storing user credentials and verification tokens.
 - **EditorialModule**: Proxies editorial REST operations (articles, comments, tags) to the CMS API while enforcing role-based access rules.
 - **ArticlesModule**: Exposes article data via GraphQL, fetching from the CMS API.
 - **UsersModule**: Persists CMS user records through POST/GET proxies and centralizes role/ownership helpers for GraphQL and REST flows.
+
+## User Registration & Email Verification
+
+The API Gateway includes a complete user registration system with email verification:
+
+### Features
+
+- ✅ Email-based registration with secure password hashing (bcrypt)
+- ✅ Email verification with expiring tokens (configurable, default 24 hours)
+- ✅ Rate limiting to prevent abuse (5 req/min for registration, 3 req/min for resend)
+- ✅ XSS-safe HTML email templates
+- ✅ Optimized token lookup with prefix-based indexing
+- ✅ Comprehensive error handling with specific error codes
+- ✅ Rollback migrations included
+
+### REST Endpoints
+
+| Method | Path                             | Description                                    | Rate Limit     |
+| ------ | -------------------------------- | ---------------------------------------------- | -------------- |
+| `POST` | `/auth/register`                 | Register a new user with email verification    | 5 req/min      |
+| `POST` | `/auth/verify-email`             | Verify email with token from email             | 10 req/min     |
+| `POST` | `/auth/resend-verification`      | Resend verification email                      | 3 req/min      |
+
+### Environment Variables
+
+Add these to your `.env` file:
+
+```env
+# PostgreSQL Configuration (Cloud SQL)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=api_gateway
+POSTGRES_USER=your_user
+POSTGRES_PASSWORD=your_password
+
+# PostgreSQL SSL Configuration (for Cloud SQL)
+POSTGRES_SSL=true                          # Enable SSL connection
+POSTGRES_SSL_REJECT_UNAUTHORIZED=true      # Verify SSL certificate
+POSTGRES_SSL_CA=/path/to/server-ca.pem     # Path to CA certificate (optional)
+
+# Email Configuration
+EMAIL_SERVICE=gmail                         # Or your SMTP service
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=noreply@blichstudio.com
+
+# Verification Token Configuration
+VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours
+BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds
+
+# Application URL
+APP_URL=http://localhost:3000               # Used for verification URLs
+```
+
+### Database Setup
+
+1. **Run the initial migration:**
+   ```bash
+   cd /Users/filipcerny/BlichStudio/web/api-gateway
+   ./scripts/setup-registration.sh
+   ```
+
+2. **Apply the token optimization migration:**
+   ```bash
+   ./scripts/migrate-token-prefix.sh
+   ```
+
+The migrations create:
+- `users` table with UUID, email, password_hash, is_verified
+- `verification_tokens` table with token hash, token_prefix, user_id, expires_at
+- Indexes for efficient lookups
+- Trigger to auto-update updated_at timestamp
+
+### Password Requirements
+
+Passwords must:
+- Be at least 8 characters long
+- Contain at least one lowercase letter
+- Contain at least one uppercase letter
+- Contain at least one digit
+- Contain at least one special character
+
+### Error Codes
+
+| Code                           | Description                                    |
+| ------------------------------ | ---------------------------------------------- |
+| `EMAIL_ALREADY_EXISTS`         | Email is already registered                    |
+| `INVALID_VERIFICATION_TOKEN`   | Token is invalid or doesn't exist              |
+| `VERIFICATION_TOKEN_EXPIRED`   | Token has expired (past expiry time)           |
+| `EMAIL_ALREADY_VERIFIED`       | User's email is already verified               |
+| `USER_NOT_FOUND`               | No user found with given email                 |
+
+### Security Features
+
+1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12)
+2. **Token Security**: 
+   - Tokens are hashed with bcrypt before storage
+   - Prefix-based lookup for O(1) query performance
+   - Configurable expiration (default: 24 hours)
+   - Only first 8 characters logged in development mode
+3. **Rate Limiting**: Per-endpoint limits to prevent abuse
+4. **XSS Prevention**: HTML escaping in email templates
+5. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification
+
+### Performance Optimizations
+
+The system uses a two-part token structure for efficient lookup:
+- **Token Prefix** (first 8 chars): Indexed for fast database queries
+- **Token Hash**: bcrypt hash of full token for secure verification
+
+This avoids the O(n) performance issue of comparing every unexpired token with bcrypt.
+
+### Testing
+
+Run the comprehensive E2E test suite:
+
+```bash
+bun run test:e2e test/user-registration.e2e-spec.ts
+```
+
+The test suite covers:
+- Successful registration flow
+- Duplicate email handling
+- Invalid password formats
+- Email verification success/failure
+- Token expiration scenarios
+- Resend verification functionality

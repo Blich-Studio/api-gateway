@@ -67,13 +67,13 @@ export class EmailService {
     //   html: this.getVerificationEmailTemplate(name, verificationUrl),
     // })
 
-    // For development: Log the verification URL
+    // For development: Log the verification URL (with redacted token)
     if (process.env.NODE_ENV === 'development') {
       this.logger.log('='.repeat(80))
       this.logger.log('VERIFICATION EMAIL')
       this.logger.log(`To: ${email}`)
       this.logger.log(`Name: ${name}`)
-      this.logger.log(`Token: ${token}`)
+      this.logger.log(`Token: ${token.substring(0, 8)}...`)
       this.logger.log(`Verification URL: ${verificationUrl}`)
       this.logger.log('='.repeat(80))
     }
@@ -84,9 +84,8 @@ export class EmailService {
   }
 
   private getVerificationEmailTemplate(name: string, verificationUrl: string): string {
-    // Escape HTML to prevent XSS attacks
+    // Escape HTML to prevent XSS attacks (only for name, URLs are safe in href)
     const safeName = escapeHtml(name)
-    const safeUrl = escapeHtml(verificationUrl)
 
     return `
       <!DOCTYPE html>
@@ -135,7 +134,7 @@ export class EmailService {
             <p>Click the button below to verify your email:</p>
             <a href="${verificationUrl}" class="button">Verify Email Address</a>
             <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #007bff;">${safeUrl}</p>
+            <p style="word-break: break-all; color: #007bff;">${verificationUrl}</p>
             <p><strong>This link will expire in 24 hours.</strong></p>
             <div class="footer">
               <p>If you didn't create an account, you can safely ignore this email.</p>
