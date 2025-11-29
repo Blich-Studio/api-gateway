@@ -78,7 +78,7 @@ export class UserAuthService {
       // Handle race condition where duplicate email was inserted
       if (error instanceof Error && 'code' in error && error.code === '23505') {
         throw new ConflictException({
-          code: 'EMAIL_ALREADY_EXISTS',
+          code: 'EMAIL_ALREADY_IN_USE',
           message: 'A user with this email already exists',
         })
       }

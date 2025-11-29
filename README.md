@@ -167,7 +167,7 @@ APP_URL=http://localhost:3000               # Used for verification URLs
 
 1. **Run the initial migration:**
    ```bash
-   cd /Users/filipcerny/BlichStudio/web/api-gateway
+   # From the project root
    ./scripts/setup-registration.sh
    ```
 
@@ -195,7 +195,7 @@ Passwords must:
 
 | Code                           | Description                                    |
 | ------------------------------ | ---------------------------------------------- |
-| `EMAIL_ALREADY_EXISTS`         | Email is already registered                    |
+| `EMAIL_ALREADY_IN_USE`         | Email is already registered                    |
 | `INVALID_VERIFICATION_TOKEN`   | Token is invalid or doesn't exist              |
 | `VERIFICATION_TOKEN_EXPIRED`   | Token has expired (past expiry time)           |
 | `EMAIL_ALREADY_VERIFIED`       | User's email is already verified               |
