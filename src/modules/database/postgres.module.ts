@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common'
+import { Inject, Module, type OnModuleDestroy } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Pool, type QueryResult } from 'pg'
 
@@ -6,6 +6,7 @@ export const POSTGRES_CLIENT = 'POSTGRES_CLIENT'
 
 export interface PostgresClient {
   query(text: string, params?: unknown[]): Promise<QueryResult<Record<string, unknown>>>
+  end(): Promise<void>
 }
 
 @Module({
@@ -23,12 +24,7 @@ export interface PostgresClient {
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
-          ssl:
-            process.env.NODE_ENV === 'production'
-              ? {
-                  rejectUnauthorized: false,
-                }
-              : false,
+          ssl: process.env.NODE_ENV === 'production',
         })
       },
       inject: [ConfigService],
@@ -36,4 +32,10 @@ export interface PostgresClient {
   ],
   exports: [POSTGRES_CLIENT],
 })
-export class PostgresModule {}
+export class PostgresModule implements OnModuleDestroy {
+  constructor(@Inject(POSTGRES_CLIENT) private readonly postgresClient: Pool) {}
+
+  async onModuleDestroy() {
+    await this.postgresClient.end()
+  }
+}

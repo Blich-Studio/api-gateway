@@ -17,7 +17,7 @@ export interface VerificationToken {
   expiresAt: Date
 }
 
-export type RegisterResponse = Omit<User, 'passwordHash'>
+export type RegisterResponse = User
 
 export interface VerifyEmailResponse {
   message: string

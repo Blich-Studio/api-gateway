@@ -12,11 +12,4 @@ export default [
   {
     ignores: ['**/*.spec.ts', '**/*.e2e-spec.ts', 'test/**/*'],
   },
-  {
-    files: ['**/postgres.module.ts'],
-    rules: {
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-    },
-  },
 ]
