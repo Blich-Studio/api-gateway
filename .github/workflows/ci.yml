@@ -4,19 +4,30 @@ on:
   push:
     branches:
       - main
-      - develop
+      - development
   pull_request:
     branches:
       - main
-      - develop
+      - development
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
-  lint-and-test:
+  quality-checks:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.14'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@blich-studio'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -24,9 +35,9 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun install
 
       - name: Type check
         run: bun run typecheck
@@ -34,8 +45,8 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Run tests
+      - name: Unit tests
         run: bun run test
 
-      - name: Run e2e tests
+      - name: E2E tests
         run: bun run test:e2e
