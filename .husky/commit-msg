@@ -1,1 +1,1 @@
-bunx --no -- commitlint --edit $1
+NODE_NO_WARNINGS=1 bunx --no -- commitlint --edit $1

@@ -28,6 +28,17 @@ describe('User Registration (e2e) - Real Database', () => {
   let emailService: EmailServiceMock
 
   beforeAll(async () => {
+    // Validate required environment variables
+    const requiredEnvVars = ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB'];
+    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Missing required environment variables: ${missingVars.join(', ')}. ` +
+        'Please ensure .env.test is properly configured.'
+      );
+    }
+
     // Create real database connection pool for tests
     dbPool = new Pool({
       host: process.env.POSTGRES_HOST,
@@ -82,10 +93,10 @@ describe('User Registration (e2e) - Real Database', () => {
   })
 
   afterAll(async () => {
-    // Clean up before closing pool
+    // Clean up before closing pool (delete in correct order for foreign key constraints)
     try {
-      await dbPool.query('DELETE FROM verification_tokens')
-      await dbPool.query('DELETE FROM users')
+      await dbPool.query('DELETE FROM verification_tokens') // Delete child records first
+      await dbPool.query('DELETE FROM users') // Then parent records
     } catch (error) {
       // Ignore errors if pool already closed
     }

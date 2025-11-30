@@ -47,12 +47,8 @@ export class UserAuthService implements OnModuleInit {
   /**
    * Validate TOKEN_PREFIX_LENGTH matches database schema on startup
    * This prevents runtime errors if the constant and migration get out of sync
-   *
-   * NOTE: Temporarily disabled to allow local development without database connection
-   * Re-enable after migrations are run or when using Cloud SQL proxy
    */
   async onModuleInit() {
-    // TODO: Uncomment after running migrations or setting up Cloud SQL proxy
     try {
       const query = `
         SELECT character_maximum_length
@@ -79,9 +75,6 @@ export class UserAuthService implements OnModuleInit {
       }
       this.logger.warn('Could not validate TOKEN_PREFIX_LENGTH (table may not exist yet)', error)
     }
-    this.logger.warn(
-      'TOKEN_PREFIX_LENGTH validation disabled - run migrations in Cloud SQL Console first'
-    )
   }
 
   async register(registerDto: RegisterUserDto): Promise<RegisterResponse> {
@@ -344,7 +337,7 @@ export class UserAuthService implements OnModuleInit {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    const saltRounds = Number(this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12))
+    const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12)
     return bcrypt.hash(password, saltRounds)
   }
 

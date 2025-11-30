@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsString } from 'class-validator'
+import { IsString, MinLength } from 'class-validator'
 
 export class VerifyEmailDto {
   @ApiProperty({
@@ -7,5 +7,6 @@ export class VerifyEmailDto {
     example: 'abc123def456ghi789',
   })
   @IsString()
+  @MinLength(1, { message: 'Token cannot be empty' })
   token!: string
 }

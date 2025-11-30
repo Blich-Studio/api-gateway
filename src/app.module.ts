@@ -11,7 +11,6 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
     }),
     ThrottlerModule.forRoot([
       {

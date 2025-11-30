@@ -11,12 +11,13 @@ describe('VerifyEmailDto', () => {
     expect(errors).toHaveLength(0)
   })
 
-  it('should accept empty string token (no length validation)', async () => {
+  it('should reject empty string token', async () => {
     const dto = new VerifyEmailDto()
     dto.token = ''
 
     const errors = await validate(dto)
-    expect(errors).toHaveLength(0)
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors[0].property).toBe('token')
   })
 
   it('should reject undefined token', async () => {
