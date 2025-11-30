@@ -1,0 +1,96 @@
+# Cloud Build configuration for building and deploying to Cloud Run
+# This file is used by GCP Cloud Build to build the Docker image and deploy to Cloud Run
+
+steps:
+  # Step 1: Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'NPM_TOKEN=${_NPM_TOKEN}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+
+  # Step 2: Push the Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}'
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloud-run'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '3000'
+      - '--memory'
+      - '${_MEMORY}'
+      - '--cpu'
+      - '${_CPU}'
+      - '--min-instances'
+      - '${_MIN_INSTANCES}'
+      - '--max-instances'
+      - '${_MAX_INSTANCES}'
+      - '--timeout'
+      - '300'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,PORT=3000'
+      - '--set-secrets'
+      - 'POSTGRES_HOST=${_POSTGRES_HOST_SECRET}:latest,POSTGRES_PORT=${_POSTGRES_PORT_SECRET}:latest,POSTGRES_USER=${_POSTGRES_USER_SECRET}:latest,POSTGRES_PASSWORD=${_POSTGRES_PASSWORD_SECRET}:latest,POSTGRES_DB=${_POSTGRES_DB_SECRET}:latest,POSTGRES_SSL=${_POSTGRES_SSL_SECRET}:latest,BCRYPT_SALT_ROUNDS=${_BCRYPT_SALT_ROUNDS_SECRET}:latest,VERIFICATION_TOKEN_EXPIRY_HOURS=${_VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET}:latest'
+      - '--vpc-connector'
+      - '${_VPC_CONNECTOR}'
+      - '--vpc-egress'
+      - 'private-ranges-only'
+
+# Substitution variables (can be overridden in trigger or CLI)
+substitutions:
+  _REGION: 'europe-west1'
+  _SERVICE_NAME: 'blich-api-gateway'
+  _ARTIFACT_REGISTRY_REPO: 'blich-studio'
+  _MEMORY: '512Mi'
+  _CPU: '1'
+  _MIN_INSTANCES: '0'
+  _MAX_INSTANCES: '10'
+  _VPC_CONNECTOR: 'blich-vpc-connector'
+  # Secret names in Secret Manager
+  _POSTGRES_HOST_SECRET: 'POSTGRES_HOST'
+  _POSTGRES_PORT_SECRET: 'POSTGRES_PORT'
+  _POSTGRES_USER_SECRET: 'POSTGRES_USER'
+  _POSTGRES_PASSWORD_SECRET: 'POSTGRES_PASSWORD'
+  _POSTGRES_DB_SECRET: 'POSTGRES_DB'
+  _POSTGRES_SSL_SECRET: 'POSTGRES_SSL'
+  _BCRYPT_SALT_ROUNDS_SECRET: 'BCRYPT_SALT_ROUNDS'
+  _VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET: 'VERIFICATION_TOKEN_EXPIRY_HOURS'
+  _NPM_TOKEN: 'not-set'
+
+# Build options
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Images to be pushed to Artifact Registry
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest'
+
+# Timeout for the entire build
+timeout: '1200s'
