@@ -1,38 +1,36 @@
-import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default'
-import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo'
-import { HttpModule } from '@nestjs/axios'
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { GraphQLModule } from '@nestjs/graphql'
-import { join } from 'path'
-
-import configuration from './config/configuration'
-import { AuthModule } from './modules/auth/auth.module'
-// import { CmsProxyModule } from './modules/cms-proxy/cms-proxy.module'
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { AppController } from './app.controller'
-import { ArticlesModule } from './modules/articles/articles.module'
-import { EditorialModule } from './modules/editorial/editorial.module'
+import { AppService } from './app.service'
+import { AuthModule } from './modules/auth/auth.module'
+import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      load: [configuration],
       isGlobal: true,
     }),
-    GraphQLModule.forRoot<ApolloDriverConfig>({
-      driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
-      sortSchema: true,
-      playground: false,
-      csrfPrevention: false,
-      plugins: [ApolloServerPluginLandingPageLocalDefault()],
-    }),
-    HttpModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 60 seconds
+        limit: 10, // Default limit for all routes
+      },
+    ]),
     AuthModule,
-    ArticlesModule,
-    EditorialModule,
-    // CmsProxyModule,
   ],
   controllers: [AppController],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseInterceptor,
+    },
+  ],
 })
 export class AppModule {}
