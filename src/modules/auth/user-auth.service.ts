@@ -141,6 +141,7 @@ export class UserAuthService {
     const tokenHashBuffer = Buffer.from(tokenHash, 'hex')
 
     // Iterate through all tokens without early exit to maintain constant-time behavior
+    // Note: Perfect constant-time is difficult with conditional branches, but we minimize timing leaks
     for (const row of tokenResult.rows) {
       const storedHashBuffer = Buffer.from(row.token as string, 'hex')
       // Use Buffer.compare for constant-time comparison
@@ -149,13 +150,17 @@ export class UserAuthService {
         tokenHashBuffer.compare(storedHashBuffer) === 0
 
       // Store match without early exit (evaluate all tokens)
+      // Track both expired and valid matches to ensure correct precedence
       if (isMatch) {
-        // Check if token is expired
-        if (new Date(row.expires_at as string) < new Date()) {
+        const isExpired = new Date(row.expires_at as string) < new Date()
+        // Only set hasExpiredMatch if we haven't found a valid token yet
+        // This ensures valid tokens take precedence over expired ones
+        if (isExpired && !matchedToken) {
           hasExpiredMatch = true
-        } else {
-          // Only assign first valid match using nullish coalescing
-          matchedToken ??= row
+        } else if (!isExpired) {
+          // Valid token takes precedence - override any previous expired match
+          matchedToken = row
+          hasExpiredMatch = false
         }
       }
     }

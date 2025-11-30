@@ -125,7 +125,11 @@ The API Gateway includes a complete user registration system with email verifica
 > **⚠️ CRITICAL: Email Provider Not Implemented**  
 > Email sending is currently **NOT functional in production**. The system logs verification URLs to the console in development mode but does not send actual emails. You **must** implement an email provider (SendGrid, AWS SES, or Nodemailer) in `src/modules/email/email.service.ts` before deploying to production. See the commented examples in that file for integration guidance.
 
-> **Note**: Email templates are currently inline in the code. For better maintainability when adding more templates, consider extracting them to separate `.html` or `.hbs` files.
+> **Maintainability Note**: Email templates are currently inline in `email.service.ts`. For production use with multiple templates, consider extracting them to separate `.html` or `.hbs` files. This makes it easier to:
+> - Update designs without modifying service code
+> - Support multiple languages/locales
+> - Test templates independently
+> - Version control template changes separately
 
 ### REST Endpoints
 
@@ -176,13 +180,6 @@ COMPANY_NAME=Blich Studio                   # Default: 'Blich Studio' (used in e
 
 1. **Run the initial migration:**
    
-   If using the provided setup script:
-   ```bash
-   # From the project root
-   ./scripts/setup-registration.sh
-   ```
-   
-   Or manually with psql:
    ```bash
    export PGPASSWORD="${POSTGRES_PASSWORD}"
    psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f database/migrations/001_user_registration.sql
@@ -194,7 +191,7 @@ COMPANY_NAME=Blich Studio                   # Default: 'Blich Studio' (used in e
    ./scripts/migrate-token-prefix.sh
    ```
    
-   ⚠️ **IMPORTANT**: This migration is **destructive** and will delete all existing verification tokens. This is necessary because tokens are hashed with SHA-256 (one-way encryption), making it impossible to extract the prefix from existing tokens. Users with pending verifications will need to request new verification emails. Run during low-traffic periods.
+   ⚠️ **IMPORTANT**: This migration is **destructive** and will delete all existing verification tokens. This is necessary because tokens are hashed with SHA-256 (one-way hashing function), making it impossible to extract the prefix from existing tokens. Users with pending verifications will need to request new verification emails. Run during low-traffic periods.
 
 The migrations create:
 - `users` table with UUID, email, password_hash, is_verified
@@ -246,6 +243,8 @@ Passwords must:
 The system uses a two-part token structure for efficient lookup:
 - **Token Prefix** (first 8 chars): Indexed for fast database queries
 - **Token Hash**: SHA-256 hash of full token for secure verification
+
+> **Note**: The prefix length (8 characters) is defined by the `TOKEN_PREFIX_LENGTH` constant in `user-auth.service.ts`. This must match the `VARCHAR(8)` definition in the database migration (`002_add_token_prefix.sql`). If changing this value, update both locations to prevent inconsistency.
 
 Key optimizations:
 1. **O(1) Token Lookup**: Composite index on (token_prefix, expires_at) avoids O(n) comparisons

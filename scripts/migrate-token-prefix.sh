@@ -6,7 +6,7 @@
 # IMPORTANT: Execute this script, do NOT source it (use ./script.sh, not . ./script.sh)
 # Sourcing will prevent the trap from working correctly and may leak PGPASSWORD
 
-set -e
+set -euo pipefail
 
 # Safely load environment variables if .env file exists
 if [ -f .env ]; then

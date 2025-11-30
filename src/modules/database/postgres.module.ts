@@ -1,4 +1,4 @@
-import { Inject, Module, type OnModuleDestroy } from '@nestjs/common'
+import { Inject, Logger, Module, type OnModuleDestroy } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Pool, type QueryResult } from 'pg'
 
@@ -34,8 +34,9 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
 
         // Warn if SSL configs are provided but SSL is not enabled
         if (!sslEnabled && (sslRejectUnauthorized || sslCa)) {
-          console.warn(
-            'WARNING: POSTGRES_SSL_REJECT_UNAUTHORIZED or POSTGRES_SSL_CA is set but POSTGRES_SSL is not enabled. SSL settings will be ignored.'
+          const logger = new Logger('PostgresModule')
+          logger.warn(
+            'POSTGRES_SSL_REJECT_UNAUTHORIZED or POSTGRES_SSL_CA is set but POSTGRES_SSL is not enabled. SSL settings will be ignored.'
           )
         }
 

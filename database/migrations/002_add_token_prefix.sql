@@ -6,8 +6,11 @@
 -- verification tokens. This is necessary because:
 --
 -- 1. Tokens are hashed with SHA-256 before storage (for security)
--- 2. We cannot extract the prefix from hashed tokens (SHA-256 is one-way)
+-- 2. We cannot extract the prefix from hashed tokens (SHA-256 is one-way hashing)
 -- 3. The new token lookup mechanism requires the prefix to be stored
+--
+-- NOTE: TOKEN_PREFIX_LENGTH constant is defined in user-auth.service.ts as 8
+-- The VARCHAR(8) length here must match that constant to prevent inconsistency
 --
 -- IMPACT ON USERS:
 -- - All users with pending email verifications will need to request a new 

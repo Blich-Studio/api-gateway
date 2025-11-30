@@ -140,7 +140,7 @@ export class EmailService {
             <h2>Welcome, ${safeName}!</h2>
             <p>Thank you for registering. Please verify your email address to complete your registration.</p>
             <p>Click the button below to verify your email:</p>
-            <a href="${verificationUrl}" class="button">Verify Email Address</a>
+            <a href="${encodeURI(verificationUrl)}" class="button">Verify Email Address</a>
             <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #007bff;">${safeUrlText}</p>
             <p><strong>This link will expire in 24 hours.</strong></p>
