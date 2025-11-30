@@ -26,6 +26,6 @@ describe('AppController (e2e)', () => {
   it('/ (GET)', async () => {
     const response = await request(app.getHttpServer() as Server).get('/')
     expect(response.status).toBe(200)
-    expect(response.text).toBe('Hello World!')
+    expect(response.body).toEqual({ data: 'Hello World!' })
   })
 })

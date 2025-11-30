@@ -51,9 +51,9 @@ export class UserAuthService implements OnModuleInit {
   async onModuleInit() {
     try {
       const query = `
-        SELECT character_maximum_length 
-        FROM information_schema.columns 
-        WHERE table_name = 'verification_tokens' 
+        SELECT character_maximum_length
+        FROM information_schema.columns
+        WHERE table_name = 'verification_tokens'
         AND column_name = 'token_prefix'
       `
       const result = await this.postgresClient.query(query)
