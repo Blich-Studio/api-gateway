@@ -1,35 +1,16 @@
 import type { INestApplication } from '@nestjs/common'
 import type { TestingModule } from '@nestjs/testing'
 import { Test } from '@nestjs/testing'
+import { ConfigModule } from '@nestjs/config'
+import { APP_GUARD } from '@nestjs/core'
 import request from 'supertest'
 import type { Mock } from 'vitest'
-import { vi } from 'vitest'
+import { vi, beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest'
+import { Pool } from 'pg'
 import { AppModule } from '../src/app.module'
-
-// Mock PostgreSQL client (you'll need to install pg package or use TypeORM/Prisma)
-interface PostgresClientMock {
-  query: Mock
-  connect: Mock
-  end: Mock
-}
 
 interface EmailServiceMock {
   sendVerificationEmail: Mock
-}
-
-interface VerificationToken {
-  token: string
-  userId: string
-  email: string
-  expiresAt: Date
-}
-
-interface User {
-  id: string
-  email: string
-  name: string
-  isVerified: boolean
-  createdAt: Date
 }
 
 interface RegisterUserDto {
@@ -48,42 +29,64 @@ interface ResendVerificationDto {
 
 describe('User Registration (e2e)', () => {
   let app: INestApplication
-  let postgresClient: PostgresClientMock
+  let dbPool: Pool
   let emailService: EmailServiceMock
 
-  // Setup test database connection and mocks
+  // Setup test database connection
   beforeAll(async () => {
-    // Mock PostgreSQL client
-    postgresClient = {
-      query: vi.fn(),
-      connect: vi.fn().mockResolvedValue(undefined),
-      end: vi.fn().mockResolvedValue(undefined),
-    }
+    // Load test environment variables
+    process.env.NODE_ENV = 'test'
+    
+    // Create real database connection pool for tests
+    dbPool = new Pool({
+      host: process.env.POSTGRES_HOST || '34.52.194.65',
+      port: Number(process.env.POSTGRES_PORT) || 5432,
+      user: process.env.POSTGRES_USER || 'postgres',
+      password: process.env.POSTGRES_PASSWORD || '',
+      database: process.env.POSTGRES_DB || 'blich_studio_test',
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    })
 
-    // Mock Email Service
+    // Mock Email Service (we don't want to send real emails in tests)
     emailService = {
       sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
     }
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          envFilePath: '.env.test',
+        }),
+        AppModule,
+      ],
     })
       .overrideProvider('POSTGRES_CLIENT')
-      .useValue(postgresClient)
+      .useValue(dbPool)
       .overrideProvider('EMAIL_SERVICE')
       .useValue(emailService)
+      .overrideProvider(APP_GUARD)
+      .useValue({ canActivate: () => true }) // Disable ThrottlerGuard for tests
       .compile()
 
     app = moduleFixture.createNestApplication()
-    // Global filters and interceptors will be set up by the app module
     await app.init()
   })
 
   afterAll(async () => {
+    // Clean up test data
+    await dbPool.query('DELETE FROM verification_tokens')
+    await dbPool.query('DELETE FROM users')
+    await dbPool.end()
     await app.close()
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Clean database before each test
+    await dbPool.query('DELETE FROM verification_tokens')
+    await dbPool.query('DELETE FROM users')
     vi.clearAllMocks()
   })
 
@@ -107,10 +110,10 @@ describe('User Registration (e2e)', () => {
       beforeEach(() => {
         // Mock: No existing user with this email
         postgresClient.query.mockImplementation((query: string) => {
-          if (query.includes('SELECT') && query.includes(newUserEmail)) {
+          if (query.includes('SELECT') && query.includes('FROM users')) {
             return Promise.resolve({ rows: [], rowCount: 0 })
           }
-          // Mock successful INSERT
+          // Mock successful INSERT INTO users
           if (query.includes('INSERT INTO users')) {
             return Promise.resolve({
               rows: [
@@ -122,6 +125,13 @@ describe('User Registration (e2e)', () => {
                   created_at: new Date(),
                 },
               ],
+              rowCount: 1,
+            })
+          }
+          // Mock INSERT INTO verification_tokens
+          if (query.includes('INSERT INTO verification_tokens')) {
+            return Promise.resolve({
+              rows: [{ token: 'mock-token-hash' }],
               rowCount: 1,
             })
           }
@@ -178,16 +188,9 @@ describe('User Registration (e2e)', () => {
       beforeEach(() => {
         // Mock: User already exists
         postgresClient.query.mockImplementation((query: string) => {
-          if (query.includes('SELECT') && query.includes(existingEmail)) {
+          if (query.includes('SELECT') && query.includes('FROM users')) {
             return Promise.resolve({
-              rows: [
-                {
-                  id: 'existing-user-123',
-                  email: existingEmail,
-                  name: 'Existing User',
-                  is_verified: true,
-                },
-              ],
+              rows: [{ id: 'existing-user-123' }],
               rowCount: 1,
             })
           }
@@ -216,8 +219,8 @@ describe('User Registration (e2e)', () => {
           .post('/auth/register')
           .send(takenUserData)
 
-        expect(response.body.error).toBeDefined()
-        expect(response.body.error.code).toBe('EMAIL_ALREADY_IN_USE')
+        expect(response.body.code).toBe('EMAIL_ALREADY_IN_USE')
+        expect(response.body.message).toBeDefined()
       })
     })
 
@@ -229,9 +232,9 @@ describe('User Registration (e2e)', () => {
       }
 
       beforeEach(() => {
-        // Mock: No existing user
+        // Mock: No existing user (validation error happens before DB call anyway)
         postgresClient.query.mockImplementation((query: string) => {
-          if (query.includes('SELECT')) {
+          if (query.includes('SELECT') && query.includes('FROM users')) {
             return Promise.resolve({ rows: [], rowCount: 0 })
           }
           return Promise.resolve({ rows: [], rowCount: 0 })
@@ -251,10 +254,11 @@ describe('User Registration (e2e)', () => {
           .post('/auth/register')
           .send(weakPasswordData)
 
-        expect(response.body.error).toBeDefined()
-        expect(
-          response.body.error.message || response.body.error.details || response.body.message
-        ).toMatch(/password/i)
+        expect(response.body.message).toBeDefined()
+        const errorMessage = Array.isArray(response.body.message)
+          ? response.body.message.join(' ')
+          : response.body.message
+        expect(errorMessage).toMatch(/password/i)
       })
     })
 
@@ -269,7 +273,7 @@ describe('User Registration (e2e)', () => {
       beforeEach(() => {
         // Mock: No existing user, successful registration
         postgresClient.query.mockImplementation((query: string) => {
-          if (query.includes('SELECT') && query.includes(verifyUserEmail)) {
+          if (query.includes('SELECT') && query.includes('FROM users')) {
             return Promise.resolve({ rows: [], rowCount: 0 })
           }
           if (query.includes('INSERT INTO users')) {
@@ -288,14 +292,7 @@ describe('User Registration (e2e)', () => {
           }
           if (query.includes('INSERT INTO verification_tokens')) {
             return Promise.resolve({
-              rows: [
-                {
-                  token: 'verification-token-123',
-                  user_id: 'verify-user-123',
-                  email: verifyUserEmail,
-                  expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-                },
-              ],
+              rows: [{ token: 'mock-token-hash' }],
               rowCount: 1,
             })
           }
@@ -348,6 +345,10 @@ describe('User Registration (e2e)', () => {
       const userId = 'pending-user-123'
 
       beforeEach(() => {
+        const crypto = require('crypto')
+        const tokenHash = crypto.createHash('sha256').update(validToken).digest('hex')
+        const tokenPrefix = validToken.substring(0, 8)
+
         postgresClient.query.mockImplementation((query: string, params?: any[]) => {
           // Mock: Pending user exists
           if (
@@ -366,16 +367,17 @@ describe('User Registration (e2e)', () => {
               rowCount: 1,
             })
           }
-          // Mock: Valid verification token exists
+          // Mock: Valid verification token exists (by token_prefix)
           if (
             query.includes('SELECT') &&
             query.includes('verification_tokens') &&
-            params?.[0] === validToken
+            query.includes('token_prefix')
           ) {
             return Promise.resolve({
               rows: [
                 {
-                  token: validToken,
+                  token: tokenHash,
+                  token_prefix: tokenPrefix,
                   user_id: userId,
                   email: verifyUserEmail,
                   expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -397,6 +399,10 @@ describe('User Registration (e2e)', () => {
               rowCount: 1,
             })
           }
+          // Mock: DELETE verification token
+          if (query.includes('DELETE FROM verification_tokens')) {
+            return Promise.resolve({ rows: [], rowCount: 1 })
+          }
           return Promise.resolve({ rows: [], rowCount: 0 })
         })
       })
@@ -410,9 +416,10 @@ describe('User Registration (e2e)', () => {
       })
 
       it('And a valid verification token was issued for "verify.user@example.com"', async () => {
+        const tokenPrefix = validToken.substring(0, 8)
         const result = await postgresClient.query(
-          'SELECT * FROM verification_tokens WHERE token = $1',
-          [validToken]
+          'SELECT * FROM verification_tokens WHERE token_prefix = $1',
+          [tokenPrefix]
         )
         expect(result.rows.length).toBe(1)
         expect(result.rows[0].email).toBe(verifyUserEmail)
@@ -490,8 +497,8 @@ describe('User Registration (e2e)', () => {
           .post('/auth/verify-email')
           .send({ token: invalidToken })
 
-        expect(response.body.error).toBeDefined()
-        expect(response.body.error.code).toBe('INVALID_VERIFICATION_TOKEN')
+        expect(response.body.code).toBe('INVALID_VERIFICATION_TOKEN')
+        expect(response.body.message).toBeDefined()
       })
 
       it('And the user with email "verify.user@example.com" should still be unverified', async () => {
@@ -517,6 +524,10 @@ describe('User Registration (e2e)', () => {
       const userId = 'pending-user-123'
 
       beforeEach(() => {
+        const crypto = require('crypto')
+        const tokenHash = crypto.createHash('sha256').update(expiredToken).digest('hex')
+        const tokenPrefix = expiredToken.substring(0, 8)
+
         postgresClient.query.mockImplementation((query: string, params?: any[]) => {
           // Mock: Pending user exists
           if (
@@ -535,16 +546,17 @@ describe('User Registration (e2e)', () => {
               rowCount: 1,
             })
           }
-          // Mock: Token exists but is expired
+          // Mock: Token exists but is expired (by token_prefix)
           if (
             query.includes('SELECT') &&
             query.includes('verification_tokens') &&
-            params?.[0] === expiredToken
+            query.includes('token_prefix')
           ) {
             return Promise.resolve({
               rows: [
                 {
-                  token: expiredToken,
+                  token: tokenHash,
+                  token_prefix: tokenPrefix,
                   user_id: userId,
                   email: verifyUserEmail,
                   expires_at: new Date(Date.now() - 24 * 60 * 60 * 1000), // Expired yesterday
@@ -566,12 +578,13 @@ describe('User Registration (e2e)', () => {
       })
 
       it('And the verification token for "verify.user@example.com" is expired', async () => {
+        const tokenPrefix = expiredToken.substring(0, 8)
         const result = await postgresClient.query(
-          'SELECT * FROM verification_tokens WHERE token = $1',
-          [expiredToken]
+          'SELECT * FROM verification_tokens WHERE token_prefix = $1',
+          [tokenPrefix]
         )
         expect(result.rows.length).toBe(1)
-        expect(result.rows[0].expires_at.getTime()).toBeLessThan(Date.now())
+        expect(new Date(result.rows[0].expires_at).getTime()).toBeLessThan(Date.now())
       })
 
       it('When I submit a verification request with that token, Then the response status should be 400', async () => {
@@ -587,8 +600,8 @@ describe('User Registration (e2e)', () => {
           .post('/auth/verify-email')
           .send({ token: expiredToken })
 
-        expect(response.body.error).toBeDefined()
-        expect(response.body.error.code).toBe('VERIFICATION_TOKEN_EXPIRED')
+        expect(response.body.code).toBe('VERIFICATION_TOKEN_EXPIRED')
+        expect(response.body.message).toBeDefined()
       })
 
       it('And the user with email "verify.user@example.com" should still be unverified', async () => {
@@ -609,7 +622,7 @@ describe('User Registration (e2e)', () => {
       beforeEach(() => {
         postgresClient.query.mockImplementation((query: string, params?: any[]) => {
           // Mock: Pending user exists
-          if (query.includes('SELECT') && query.includes('users')) {
+          if (query.includes('SELECT') && query.includes('FROM users')) {
             return Promise.resolve({
               rows: [
                 {
@@ -624,14 +637,7 @@ describe('User Registration (e2e)', () => {
           // Mock: Create new verification token
           if (query.includes('INSERT INTO verification_tokens')) {
             return Promise.resolve({
-              rows: [
-                {
-                  token: 'new-verification-token-456',
-                  user_id: userId,
-                  email: verifyUserEmail,
-                  expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-                },
-              ],
+              rows: [{ token: 'mock-token-hash' }],
               rowCount: 1,
             })
           }
@@ -649,12 +655,12 @@ describe('User Registration (e2e)', () => {
         expect(result.rows[0].is_verified).toBe(false)
       })
 
-      it('When I request a new verification email, Then the response status should be 200', async () => {
+      it('When I request a new verification email, Then the response status should be 201', async () => {
         const response = await request(app.getHttpServer())
           .post('/auth/resend-verification')
           .send({ email: verifyUserEmail })
 
-        expect(response.status).toBe(200)
+        expect(response.status).toBe(201)
       })
 
       it('And a new verification email should be sent to "verify.user@example.com"', async () => {
