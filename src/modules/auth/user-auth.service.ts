@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger } from '@nestjs/common'
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
 import { createHash, randomUUID } from 'node:crypto'
@@ -25,7 +32,7 @@ interface EmailService {
 }
 
 @Injectable()
-export class UserAuthService {
+export class UserAuthService implements OnModuleInit {
   private readonly logger = new Logger(UserAuthService.name)
   private readonly TOKEN_PREFIX_LENGTH = 8 // Length of token prefix for efficient lookup
   private readonly CLEANUP_THROTTLE_MS = 60 * 60 * 1000 // 1 hour
@@ -36,6 +43,39 @@ export class UserAuthService {
     @Inject(EMAIL_SERVICE) private readonly emailService: EmailService,
     private readonly configService: ConfigService
   ) {}
+
+  /**
+   * Validate TOKEN_PREFIX_LENGTH matches database schema on startup
+   * This prevents runtime errors if the constant and migration get out of sync
+   */
+  async onModuleInit() {
+    try {
+      const query = `
+        SELECT character_maximum_length 
+        FROM information_schema.columns 
+        WHERE table_name = 'verification_tokens' 
+        AND column_name = 'token_prefix'
+      `
+      const result = await this.postgresClient.query(query)
+      if (result.rows.length > 0) {
+        const dbLength = result.rows[0].character_maximum_length as number
+        if (dbLength !== this.TOKEN_PREFIX_LENGTH) {
+          this.logger.error(
+            `TOKEN_PREFIX_LENGTH mismatch: Service expects ${this.TOKEN_PREFIX_LENGTH} but database has VARCHAR(${dbLength}). ` +
+              `Update either the constant or migration to match.`
+          )
+          throw new Error('TOKEN_PREFIX_LENGTH configuration mismatch')
+        }
+        this.logger.log(`TOKEN_PREFIX_LENGTH validation passed: ${this.TOKEN_PREFIX_LENGTH}`)
+      }
+    } catch (error) {
+      // Log warning but don't fail startup if table doesn't exist yet (pre-migration)
+      if (error instanceof Error && error.message.includes('mismatch')) {
+        throw error
+      }
+      this.logger.warn('Could not validate TOKEN_PREFIX_LENGTH (table may not exist yet)', error)
+    }
+  }
 
   async register(registerDto: RegisterUserDto): Promise<RegisterResponse> {
     const { email, password, name } = registerDto
@@ -212,10 +252,17 @@ export class UserAuthService {
 
     // Find user
     const user = await this.findUserByEmail(email)
-    if (!user || user.isVerified) {
-      // Return success to prevent email enumeration
+    if (!user) {
+      // Return generic success to prevent email enumeration
       return {
         message: 'If this email is registered and unverified, a verification email has been sent',
+      }
+    }
+
+    // If user is already verified, return a helpful message (no enumeration risk since we already know the account exists)
+    if (user.isVerified) {
+      return {
+        message: 'This email address is already verified. You can proceed to log in.',
       }
     }
 

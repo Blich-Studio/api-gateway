@@ -56,7 +56,7 @@ export class UserAuthController {
   })
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   async register(@Body() registerDto: RegisterUserDto) {
-    return { data: await this.userAuthService.register(registerDto) }
+    return this.userAuthService.register(registerDto)
   }
 
   @Post('verify-email')
@@ -99,7 +99,7 @@ export class UserAuthController {
     },
   })
   async verifyEmail(@Body() verifyDto: VerifyEmailDto) {
-    return { data: await this.userAuthService.verifyEmail(verifyDto) }
+    return this.userAuthService.verifyEmail(verifyDto)
   }
 
   @Post('resend-verification')
@@ -125,6 +125,6 @@ export class UserAuthController {
   })
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute
   async resendVerification(@Body() resendDto: ResendVerificationDto) {
-    return { data: await this.userAuthService.resendVerification(resendDto) }
+    return this.userAuthService.resendVerification(resendDto)
   }
 }

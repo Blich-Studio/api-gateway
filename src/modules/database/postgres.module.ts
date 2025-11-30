@@ -63,7 +63,7 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
   exports: [POSTGRES_CLIENT],
 })
 export class PostgresModule implements OnModuleDestroy {
-  constructor(@Inject(POSTGRES_CLIENT) private readonly postgresClient: Pool) {}
+  constructor(@Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient) {}
 
   async onModuleDestroy() {
     await this.postgresClient.end()

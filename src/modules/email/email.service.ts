@@ -69,12 +69,17 @@ export class EmailService {
 
     // For development: Log the verification URL (with redacted token)
     if (process.env.NODE_ENV === 'development') {
+      // Redact the token from URL to prevent exposure in log aggregation systems
+      const redactedUrl = verificationUrl.replace(
+        /token=[^&]+/,
+        `token=${token.substring(0, 8)}...`
+      )
       this.logger.log('='.repeat(80))
       this.logger.log('VERIFICATION EMAIL')
       this.logger.log(`To: ${email}`)
       this.logger.log(`Name: ${name}`)
-      this.logger.log(`Token: ${token.substring(0, 8)}...`)
-      this.logger.log(`Verification URL: ${verificationUrl}`)
+      this.logger.log(`Token: ${token.substring(0, 8)}... (redacted)`)
+      this.logger.log(`Verification URL: ${redactedUrl}`)
       this.logger.log('='.repeat(80))
     } else {
       // Warn in non-development environments that emails are not actually being sent
@@ -140,7 +145,7 @@ export class EmailService {
             <h2>Welcome, ${safeName}!</h2>
             <p>Thank you for registering. Please verify your email address to complete your registration.</p>
             <p>Click the button below to verify your email:</p>
-            <a href="${encodeURI(verificationUrl)}" class="button">Verify Email Address</a>
+            <a href="${verificationUrl}" class="button">Verify Email Address</a>
             <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #007bff;">${safeUrlText}</p>
             <p><strong>This link will expire in 24 hours.</strong></p>

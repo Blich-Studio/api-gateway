@@ -121,6 +121,7 @@ The API Gateway includes a complete user registration system with email verifica
 - ✅ Timing attack protection with random delays
 - ✅ Comprehensive error handling with specific error codes
 - ✅ Rollback migrations included
+- ✅ Consistent API response format with global interceptor
 
 > **⚠️ CRITICAL: Email Provider Not Implemented**  
 > Email sending is currently **NOT functional in production**. The system logs verification URLs to the console in development mode but does not send actual emails. You **must** implement an email provider (SendGrid, AWS SES, or Nodemailer) in `src/modules/email/email.service.ts` before deploying to production. See the commented examples in that file for integration guidance.
@@ -233,10 +234,12 @@ Passwords must:
 3. **Timing Attack Protection**: 
    - Random delays (50-150ms) on verification failures to prevent enumeration
    - Constant-time token comparison (all tokens checked to prevent early exit timing leaks)
-4. **Race Condition Prevention**: Email existence checked before expensive password hashing to prevent CPU waste
+4. **Duplicate Registration Prevention**: Database unique constraint on email (23505 error code) prevents race condition where two simultaneous registrations with the same email both pass the existence check
 5. **Rate Limiting**: Per-endpoint limits to prevent abuse (5 req/min register, 3 req/min resend)
 6. **XSS Prevention**: HTML escaping for all user-provided content in email templates
 7. **SSL/TLS**: Configurable PostgreSQL SSL with certificate verification (CA cert optional, robust boolean parsing for 'true', '1', 'yes')
+8. **Response Consistency**: Global interceptor wraps all responses in `{ data: ... }` format, matching error responses which use `{ error: ... }` structure
+9. **Startup Validation**: TOKEN_PREFIX_LENGTH constant is validated against database schema on application startup to prevent configuration drift
 
 ### Performance Optimizations
 
@@ -251,7 +254,7 @@ Key optimizations:
 2. **SHA-256 for Tokens**: 100x+ faster than bcrypt while maintaining cryptographic security
 3. **Throttled Cleanup**: Max once per hour to prevent database load under high traffic
    - For production at scale, consider scheduled jobs (pg_cron or system cron)
-4. **Early Email Validation**: Check email existence before expensive password hashing (prevents race condition CPU waste)
+4. **Early Email Validation**: Check email existence before expensive password hashing to avoid wasting CPU on duplicate registrations
 5. **Configurable Pool**: Tune connection pooling for your deployment environment
 
 ### Testing
