@@ -54,3 +54,12 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Documentation files (except README, LICENSE, CHANGELOG)
+*.md
+!README.md
+!readme.md
+!LICENSE.md
+!license.md
+!CHANGELOG.md
+!changelog.md
