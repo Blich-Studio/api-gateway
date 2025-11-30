@@ -103,40 +103,22 @@ export class UserAuthController {
   }
 
   @Post('resend-verification')
-  @ApiOperation({ summary: 'Resend verification email' })
+  @ApiOperation({
+    summary: 'Resend verification email',
+    description:
+      'Returns a generic success message regardless of whether the user exists or is already verified. ' +
+      'This prevents email enumeration attacks. Legitimate users will receive an email only if their ' +
+      'account exists and is unverified.',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Verification email sent successfully',
+    description:
+      'Generic success message (always returned to prevent email enumeration). ' +
+      'Email is sent only if user exists and is unverified.',
     schema: {
       example: {
         data: {
-          message: 'Verification email sent successfully',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'User not found or already verified',
-    schema: {
-      examples: {
-        notFound: {
-          value: {
-            error: {
-              code: 'USER_NOT_FOUND',
-              message: 'No user found with this email',
-              statusCode: 400,
-            },
-          },
-        },
-        alreadyVerified: {
-          value: {
-            error: {
-              code: 'USER_ALREADY_VERIFIED',
-              message: 'This email is already verified',
-              statusCode: 400,
-            },
-          },
+          message: 'If this email is registered and unverified, a verification email has been sent',
         },
       },
     },

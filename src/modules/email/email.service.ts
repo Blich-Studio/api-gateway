@@ -76,9 +76,15 @@ export class EmailService {
       this.logger.log(`Token: ${token.substring(0, 8)}...`)
       this.logger.log(`Verification URL: ${verificationUrl}`)
       this.logger.log('='.repeat(80))
+    } else {
+      // Warn in non-development environments that emails are not actually being sent
+      this.logger.warn(
+        `Email provider not implemented - verification email NOT sent to: ${email}. ` +
+          `Implement an email provider in ${EmailService.name} before deploying to production.`
+      )
     }
 
-    this.logger.log(`Verification email sent successfully to: ${email}`)
+    this.logger.log(`Verification email processing completed for: ${email}`)
 
     return Promise.resolve()
   }

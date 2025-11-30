@@ -122,6 +122,9 @@ The API Gateway includes a complete user registration system with email verifica
 - ✅ Comprehensive error handling with specific error codes
 - ✅ Rollback migrations included
 
+> **⚠️ CRITICAL: Email Provider Not Implemented**  
+> Email sending is currently **NOT functional in production**. The system logs verification URLs to the console in development mode but does not send actual emails. You **must** implement an email provider (SendGrid, AWS SES, or Nodemailer) in `src/modules/email/email.service.ts` before deploying to production. See the commented examples in that file for integration guidance.
+
 > **Note**: Email templates are currently inline in the code. For better maintainability when adding more templates, consider extracting them to separate `.html` or `.hbs` files.
 
 ### REST Endpoints
@@ -161,8 +164,8 @@ POSTGRES_SSL_CA=/path/to/server-ca.pem      # Path to CA certificate (optional)
 EMAIL_FROM=noreply@blichstudio.com          # Sender email address (used when email provider is configured)
 
 # Verification Token Configuration
-VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours (fallback if not set)
-BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (fallback if not set, for passwords only)
+VERIFICATION_TOKEN_EXPIRY_HOURS=24          # Default: 24 hours
+BCRYPT_SALT_ROUNDS=12                       # Default: 12 rounds (for passwords only)
 
 # Application Configuration
 APP_URL=http://localhost:3000               # Used for verification URLs
@@ -220,13 +223,13 @@ Passwords must:
 
 ### Security Features
 
-1. **Password Hashing**: bcrypt with configurable salt rounds (fallback default: 12 if not set) for secure, intentionally slow hashing
+1. **Password Hashing**: bcrypt with configurable salt rounds (default: 12) for secure, intentionally slow hashing
 2. **Token Security**: 
    - Tokens always hashed with SHA-256 (fast, cryptographically secure - not configurable)
    - SHA-256 chosen over bcrypt: tokens are random UUIDs and don't need intentional slowness
    - Prefix-based lookup for O(1) query performance
    - True constant-time comparison using Buffer.compare() with nullish coalescing to prevent timing attacks
-   - Configurable expiration (fallback default: 24 hours if not set)
+   - Configurable expiration (default: 24 hours)
    - Only first 8 characters logged in development mode
    - Automatic cleanup of expired tokens (throttled to max once per hour, async/non-blocking)
    - **Production Note**: For high-traffic apps, consider using a scheduled cron job for cleanup instead
