@@ -71,7 +71,7 @@ substitutions:
   _MIN_INSTANCES: '0'
   _MAX_INSTANCES: '10'
   _VPC_CONNECTOR: 'blich-vpc-connector'
-  _IMAGE_TAG: '${SHORT_SHA}'
+  _IMAGE_TAG: 'latest'  # Default to 'latest' for manual builds; triggers can override with SHORT_SHA
   # Secret names in Secret Manager
   _POSTGRES_HOST_SECRET: 'POSTGRES_HOST'
   _POSTGRES_PORT_SECRET: 'POSTGRES_PORT'
