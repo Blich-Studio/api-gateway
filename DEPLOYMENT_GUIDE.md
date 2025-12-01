@@ -392,18 +392,29 @@ echo "SERVICE_URL=$SERVICE_URL" >> ~/gcp-credentials.txt
 
 ## Step 10: Test Deployment (2 minutes)
 
-### 10.1 Health Check
+### 10.1 Get Authentication Token
+
+The service requires authentication. Get a bearer token using your Google Cloud credentials:
 
 ```bash
-curl $SERVICE_URL
+# Generate an identity token (valid for 1 hour)
+export TOKEN=$(gcloud auth print-identity-token)
+echo "Token obtained (expires in 1 hour)"
+```
+
+### 10.2 Health Check
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" $SERVICE_URL
 ```
 
 Expected: `Hello World!` or your app's default response.
 
-### 10.2 Test Registration Endpoint
+### 10.3 Test Registration Endpoint
 
 ```bash
 curl -X POST $SERVICE_URL/auth/register \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -413,7 +424,12 @@ curl -X POST $SERVICE_URL/auth/register \
 
 Expected: Success response with verification message.
 
-### 10.3 Check Logs
+**Note:** The token expires after ~1 hour. To refresh, run:
+```bash
+export TOKEN=$(gcloud auth print-identity-token)
+```
+
+### 10.4 Check Logs
 
 ```bash
 gcloud run services logs read blich-api-gateway \
@@ -640,6 +656,15 @@ git push origin main
 gcloud builds submit \
   --config=cloudbuild.yaml \
   --substitutions=_VPC_CONNECTOR=$VPC_CONNECTOR_NAME,_IMAGE_TAG=manual-$(date +%Y%m%d-%H%M%S)
+```
+
+**Get Authentication Token:**
+```bash
+# Generate token for API testing (expires in 1 hour)
+export TOKEN=$(gcloud auth print-identity-token)
+
+# Test the API
+curl -H "Authorization: Bearer $TOKEN" $SERVICE_URL
 ```
 
 **View Build History:**

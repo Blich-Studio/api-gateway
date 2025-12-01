@@ -6,21 +6,27 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
     secretEnv: ['NPM_TOKEN']
+    entrypoint: 'bash'
     args:
-      - 'build'
-      - '--build-arg'
-      - 'NPM_TOKEN=$$NPM_TOKEN'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${_IMAGE_TAG}'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest'
-      - '-f'
-      - 'Dockerfile'
-      - '.'
-
-  # Step 2: Push the image to Artifact Registry
+      - '-c'
+      - |
+        docker build \
+          --build-arg NPM_TOKEN="$$NPM_TOKEN" \
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${_IMAGE_TAG} \
+          -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest \
+          -f Dockerfile \
+          .
+  
+  # Step 1b: Push both tags
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-image'
+    id: 'push-image-tagged'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:${_IMAGE_TAG}'
+  
+  # Step 2: Push the latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image-latest'
     args:
       - 'push'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest'
