@@ -90,7 +90,7 @@ availableSecrets:
 
 # Build options
 options:
-  machineType: 'N1_HIGHCPU_8'
+  machineType: 'E2_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
 
 # Images to be pushed to Artifact Registry
