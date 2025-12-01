@@ -505,7 +505,7 @@ git push origin main
 # Submit a manual build (works immediately without trigger)
 gcloud builds submit \
   --config=cloudbuild.yaml \
-  --substitutions=_VPC_CONNECTOR=$VPC_CONNECTOR_NAME
+  --substitutions=_VPC_CONNECTOR=$VPC_CONNECTOR_NAME,_IMAGE_TAG=manual-$(date +%Y%m%d-%H%M%S)
 ```
 
 **View build status:**
@@ -639,7 +639,7 @@ git push origin main
 ```bash
 gcloud builds submit \
   --config=cloudbuild.yaml \
-  --substitutions=_NPM_TOKEN=$NPM_TOKEN,_VPC_CONNECTOR=$VPC_CONNECTOR_NAME
+  --substitutions=_VPC_CONNECTOR=$VPC_CONNECTOR_NAME,_IMAGE_TAG=manual-$(date +%Y%m%d-%H%M%S)
 ```
 
 **View Build History:**
