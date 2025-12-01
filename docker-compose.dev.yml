@@ -1,0 +1,64 @@
+# Development docker-compose with hot reload
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        NPM_TOKEN: ${NPM_TOKEN}
+    container_name: blich-api-gateway-dev
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      # Database
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-blich_studio}
+      POSTGRES_SSL: 'false'
+      # Application
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
+      VERIFICATION_TOKEN_EXPIRY_HOURS: ${VERIFICATION_TOKEN_EXPIRY_HOURS:-24}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - blich-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "rm -rf dist && bun run start:dev"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: blich-postgres-dev
+    restart: unless-stopped
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-blich_studio}
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - blich-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-blich_studio}']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  blich-network:
+    driver: bridge
+
+volumes:
+  postgres-dev-data:
+    driver: local
