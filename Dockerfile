@@ -30,7 +30,7 @@ COPY .npmrc ./
 # Install production dependencies only
 ARG NPM_TOKEN
 ENV NPM_TOKEN=${NPM_TOKEN}
-RUN bun install --production --frozen-lockfile
+RUN bun install --production --frozen-lockfile --ignore-scripts
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
