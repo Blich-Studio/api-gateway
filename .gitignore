@@ -59,7 +59,7 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Documentation files (except README, LICENSE, CHANGELOG)
+# Documentation files (except README, LICENSE, CHANGELOG, DEPLOYMENT_GUIDE)
 *.md
 !README.md
 !readme.md
@@ -67,4 +67,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 !license.md
 !CHANGELOG.md
 !changelog.md
+!DEPLOYMENT_GUIDE.md
 cloud-sql-proxy
