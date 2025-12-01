@@ -337,7 +337,7 @@ export class UserAuthService implements OnModuleInit {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    const saltRounds = this.configService.get<number>('BCRYPT_SALT_ROUNDS', 12)
+    const saltRounds = parseInt(this.configService.get<string>('BCRYPT_SALT_ROUNDS', '12'), 10)
     return bcrypt.hash(password, saltRounds)
   }
 
