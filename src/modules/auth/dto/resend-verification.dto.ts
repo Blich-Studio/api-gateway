@@ -1,11 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsEmail } from 'class-validator'
+import { createZodDto } from 'nestjs-zod'
+import { z } from 'zod'
 
-export class ResendVerificationDto {
-  @ApiProperty({
-    description: 'User email address',
-    example: 'user@example.com',
-  })
-  @IsEmail()
-  email!: string
-}
+const ResendVerificationSchema = z.object({
+  email: z.string().email('Invalid email address'),
+})
+
+export class ResendVerificationDto extends createZodDto(ResendVerificationSchema) {}
