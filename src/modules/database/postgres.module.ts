@@ -27,20 +27,20 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
   providers: [
     {
       provide: POSTGRES_CLIENT,
-      useFactory: (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService) => {
+        const logger = new Logger('PostgresModule')
         const sslEnabled = parseBoolean(configService.get<string>('POSTGRES_SSL'))
         const sslRejectUnauthorized = configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED')
         const sslCa = configService.get<string>('POSTGRES_SSL_CA')
 
         // Warn if SSL configs are provided but SSL is not enabled
         if (!sslEnabled && (sslRejectUnauthorized || sslCa)) {
-          const logger = new Logger('PostgresModule')
           logger.warn(
             'POSTGRES_SSL_REJECT_UNAUTHORIZED or POSTGRES_SSL_CA is set but POSTGRES_SSL is not enabled. SSL settings will be ignored.'
           )
         }
 
-        return new Pool({
+        const pool = new Pool({
           host: configService.getOrThrow<string>('POSTGRES_HOST'),
           port: configService.getOrThrow<number>('POSTGRES_PORT'),
           user: configService.getOrThrow<string>('POSTGRES_USER'),
@@ -56,6 +56,23 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
               }
             : false,
         })
+
+        // Test database connection on startup
+        try {
+          logger.log('Testing database connection...')
+          const client = await pool.connect()
+          await client.query('SELECT 1')
+          client.release()
+          logger.log('Database connection established successfully')
+        } catch (error) {
+          logger.error('Failed to connect to database', error)
+          await pool.end()
+          throw new Error(
+            `Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          )
+        }
+
+        return pool
       },
       inject: [ConfigService],
     },

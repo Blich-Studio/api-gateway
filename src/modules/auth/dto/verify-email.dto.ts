@@ -1,12 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsString, MinLength } from 'class-validator'
+import { createZodDto } from 'nestjs-zod'
+import { z } from 'zod'
 
-export class VerifyEmailDto {
-  @ApiProperty({
-    description: 'Email verification token',
-    example: 'abc123def456ghi789',
-  })
-  @IsString()
-  @MinLength(1, { message: 'Token cannot be empty' })
-  token!: string
-}
+const VerifyEmailSchema = z.object({
+  token: z.string().min(1, 'Token cannot be empty'),
+})
+
+export class VerifyEmailDto extends createZodDto(VerifyEmailSchema) {}
