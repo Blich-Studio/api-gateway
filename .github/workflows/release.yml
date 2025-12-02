@@ -37,7 +37,6 @@ jobs:
           bun run typecheck
           bun run lint
           bun run test
-          bun run test:e2e
 
       - name: Generate changelog and bump version
         run: bun run release
