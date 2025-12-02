@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
     ports:
       - '${PORT:-3000}:3000'
+      - '9229:9229'  # Debugger port
     environment:
       NODE_ENV: development
       PORT: 3000
@@ -32,7 +33,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -c "rm -rf dist && bun run start:dev"
+    command: sh -c "rm -rf dist && bun run start:debug"
 
   postgres:
     image: postgres:16-alpine
