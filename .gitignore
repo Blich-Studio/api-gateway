@@ -69,3 +69,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 !changelog.md
 !DEPLOYMENT_GUIDE.md
 cloud-sql-proxy
+server-ca.pem
