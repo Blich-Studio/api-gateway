@@ -1,10 +1,10 @@
-# Development Dockerfile with hot reload
+# Development Dockerfile with hot reload and debugging
 FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-# Install necessary tools
-RUN apk add --no-cache git
+# Install Node.js for debugging (Bun debugger is not compatible with VSCode)
+RUN apk add --no-cache git nodejs npm
 
 # Copy package files
 COPY package.json bun.lock* ./
