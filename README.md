@@ -41,7 +41,7 @@ docker-compose -f docker-compose.dev.yml down
 docker-compose -f docker-compose.dev.yml logs -f api-gateway
 ```
 
-### Without Docker
+### Local Development (without Docker)
 
 Requires PostgreSQL 16 running locally:
 
@@ -52,6 +52,29 @@ bun run start:dev
 # Production mode
 bun run start:prod
 ```
+
+### VSCode Debugging with Docker
+
+1. **Rebuild and start the development environment**:
+   ```bash
+   docker-compose -f docker-compose.dev.yml up --build
+   ```
+
+2. **Wait for the app to start** (watch for "Application running on..." message)
+
+3. **In VSCode**:
+   - Set breakpoints in your code
+   - Press `F5` or go to **Run and Debug** → **Docker: Attach to Node**
+   - Debug as normal!
+
+The debugger connects on port `9229` and supports:
+- ✅ Breakpoints
+- ✅ Step through code
+- ✅ Variable inspection
+- ✅ Watch expressions
+- ✅ Hot reload (restart on file changes)
+
+**Note**: Uses Node.js debugger (not Bun) for compatibility with VSCode. The app still runs with Bun for dependencies.
 
 ## Testing
 

@@ -44,10 +44,6 @@ export class UserAuthService implements OnModuleInit {
     private readonly configService: ConfigService
   ) {}
 
-  /**
-   * Validate TOKEN_PREFIX_LENGTH matches database schema on startup
-   * This prevents runtime errors if the constant and migration get out of sync
-   */
   async onModuleInit() {
     try {
       const query = `
