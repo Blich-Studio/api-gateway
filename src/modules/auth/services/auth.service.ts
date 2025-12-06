@@ -90,7 +90,13 @@ export class AuthService {
     `
     const result = await this.postgresClient.query(query, [email])
 
-    if (!result.rowCount || result.rowCount === 0) {
+    // Always hash the password even if user not found to prevent timing attacks
+    const dummyHash = '$2b$12$dummyHashToPreventTimingAttack1234567890123456789012'
+    const userExists = result.rowCount && result.rowCount > 0
+
+    if (!userExists) {
+      // Run bcrypt comparison with dummy hash to maintain constant time
+      await bcrypt.compare(password, dummyHash)
       return null
     }
 
@@ -114,6 +120,11 @@ export class AuthService {
   }
 
   private async issueToken(payload: TokenPayload): Promise<string> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => {
+      controller.abort()
+    }, 5000) // 5 second timeout
+
     try {
       const response = await fetch(this.jwksTokenEndpoint, {
         method: 'POST',
@@ -122,17 +133,33 @@ export class AuthService {
           'x-api-key': this.jwksApiKey,
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
 
+      clearTimeout(timeout)
+
       if (!response.ok) {
-        throw new Error(`JWKS service error: ${response.statusText}`)
+        // Log detailed error server-side, return generic error to client
+        console.error(`JWKS service error: ${response.status} ${response.statusText}`)
+        throw new UnauthorizedException('Unable to generate authentication token')
       }
 
       const data = (await response.json()) as TokenResponse
       return data.token
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      throw new Error(`Failed to issue token: ${message}`)
+      clearTimeout(timeout)
+
+      // Log detailed error server-side
+      if (error instanceof Error) {
+        console.error('Token issuance error:', error.message)
+      }
+
+      // Return generic error to client
+      if (error instanceof UnauthorizedException) {
+        throw error
+      }
+
+      throw new UnauthorizedException('Authentication service temporarily unavailable')
     }
   }
 

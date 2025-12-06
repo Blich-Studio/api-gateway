@@ -6,9 +6,15 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  // Enable CORS for all origins (configure as needed for production)
+  // Enable CORS with environment-based configuration
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : process.env.NODE_ENV === 'production'
+      ? ['https://blichstudio.com', 'https://www.blichstudio.com']
+      : true // Allow all origins in development
+
   app.enableCors({
-    origin: true, // Allow all origins (change to specific domains in production)
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],

@@ -8,7 +8,6 @@ import { UserAuthController } from './user-auth.controller'
 import { AuthService } from './services/auth.service'
 import { AuthController } from './controllers/auth.controller'
 import { JwtStrategy } from './strategies/jwt.strategy'
-import { JwtAuthGuard } from './guards/jwt-auth.guard'
 
 @Module({
   imports: [
@@ -17,8 +16,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard'
     EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
-  providers: [UserAuthService, AuthService, JwtStrategy, JwtAuthGuard],
+  providers: [UserAuthService, AuthService, JwtStrategy],
   controllers: [UserAuthController, AuthController],
-  exports: [UserAuthService, AuthService, JwtAuthGuard],
+  exports: [UserAuthService, AuthService],
 })
 export class AuthModule {}

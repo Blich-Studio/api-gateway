@@ -32,14 +32,13 @@ export class AuthController {
     description: 'Invalid credentials or email not verified',
     schema: {
       example: {
-        error: {
-          message: 'Invalid credentials',
-          statusCode: 401,
-        },
+        statusCode: 401,
+        message: 'Invalid credentials',
+        error: 'Unauthorized',
       },
     },
   })
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
+  @Throttle({ default: { limit: 5, ttl: 60 } }) // 5 requests per 60 seconds
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password)
   }
