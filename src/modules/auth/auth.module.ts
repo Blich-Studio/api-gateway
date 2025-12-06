@@ -10,12 +10,7 @@ import { AuthController } from './controllers/auth.controller'
 import { JwtStrategy } from './strategies/jwt.strategy'
 
 @Module({
-  imports: [
-    ConfigModule,
-    PostgresModule,
-    EmailModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-  ],
+  imports: [ConfigModule, PostgresModule, EmailModule, PassportModule],
   providers: [UserAuthService, AuthService, JwtStrategy],
   controllers: [UserAuthController, AuthController],
   exports: [UserAuthService, AuthService],

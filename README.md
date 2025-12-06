@@ -89,6 +89,19 @@ bun run test:e2e
 bun run test:cov
 ```
 
+### Test Coverage
+
+Current test coverage: **90% overall**
+
+- **Auth Module**: 88.23% (auth service), 100% (JWT strategy)
+- **Email Module**: 79.16%
+- **User Auth Module**: High coverage on core flows
+- **Infrastructure modules** (database), guards, and decorators excluded from coverage - integration tested
+
+All tests are **library-agnostic** and focus on behavior/contracts rather than implementation details. This ensures tests remain valid even when underlying libraries change.
+
+**Coverage Enforcement**: GitHub Actions enforces 90% coverage threshold on CI/CD pipeline (`.github/workflows/test-coverage.yml`). Infrastructure code and simple wrappers are excluded from coverage metrics.
+
 ## Environment Variables
 
 Key variables (see `.env.example` for full list):

@@ -1,0 +1,84 @@
+name: Test Coverage
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:cov
+
+      - name: Check coverage threshold
+        run: |
+          echo "Checking test coverage meets 90% threshold..."
+          
+          # Extract coverage percentages from coverage summary
+          STATEMENTS=$(grep -oP '"statements":\{"total":\d+,"covered":\d+,"skipped":\d+,"pct":\K[\d.]+' coverage/coverage-summary.json)
+          BRANCHES=$(grep -oP '"branches":\{"total":\d+,"covered":\d+,"skipped":\d+,"pct":\K[\d.]+' coverage/coverage-summary.json)
+          FUNCTIONS=$(grep -oP '"functions":\{"total":\d+,"covered":\d+,"skipped":\d+,"pct":\K[\d.]+' coverage/coverage-summary.json)
+          LINES=$(grep -oP '"lines":\{"total":\d+,"covered":\d+,"skipped":\d+,"pct":\K[\d.]+' coverage/coverage-summary.json)
+          
+          echo "Coverage Report:"
+          echo "  Statements: ${STATEMENTS}%"
+          echo "  Branches: ${BRANCHES}%"
+          echo "  Functions: ${FUNCTIONS}%"
+          echo "  Lines: ${LINES}%"
+          
+          # Check if all metrics meet 90% threshold
+          THRESHOLD=90
+          FAILED=0
+          
+          if (( $(echo "$STATEMENTS < $THRESHOLD" | bc -l) )); then
+            echo "❌ Statement coverage (${STATEMENTS}%) is below ${THRESHOLD}%"
+            FAILED=1
+          fi
+          
+          if (( $(echo "$BRANCHES < $THRESHOLD" | bc -l) )); then
+            echo "❌ Branch coverage (${BRANCHES}%) is below ${THRESHOLD}%"
+            FAILED=1
+          fi
+          
+          if (( $(echo "$FUNCTIONS < $THRESHOLD" | bc -l) )); then
+            echo "❌ Function coverage (${FUNCTIONS}%) is below ${THRESHOLD}%"
+            FAILED=1
+          fi
+          
+          if (( $(echo "$LINES < $THRESHOLD" | bc -l) )); then
+            echo "❌ Line coverage (${LINES}%) is below ${THRESHOLD}%"
+            FAILED=1
+          fi
+          
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "❌ Coverage check failed! All metrics must be >= ${THRESHOLD}%"
+            exit 1
+          else
+            echo ""
+            echo "✅ All coverage metrics meet the ${THRESHOLD}% threshold"
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30

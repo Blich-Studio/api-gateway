@@ -1,16 +1,14 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-  OnModuleInit,
-} from '@nestjs/common'
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
 import { createHash, randomUUID } from 'node:crypto'
 import { POSTGRES_CLIENT } from '../database/postgres.module'
 import { EMAIL_SERVICE } from '../email/email.service'
+import {
+  EmailAlreadyInUseError,
+  InvalidVerificationTokenError,
+  VerificationTokenExpiredError,
+} from '../../common/errors'
 import type { RegisterUserDto } from './dto/register-user.dto'
 import type { ResendVerificationDto } from './dto/resend-verification.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
@@ -81,10 +79,7 @@ export class UserAuthService implements OnModuleInit {
     const existsResult = await this.postgresClient.query(existsQuery, [email])
 
     if (existsResult.rowCount && existsResult.rowCount > 0) {
-      throw new ConflictException({
-        code: 'EMAIL_ALREADY_IN_USE',
-        message: 'A user with this email already exists',
-      })
+      throw new EmailAlreadyInUseError()
     }
 
     // Hash password (expensive operation, only after confirming email is available)
@@ -129,10 +124,7 @@ export class UserAuthService implements OnModuleInit {
     } catch (error: unknown) {
       // Handle race condition where duplicate email was inserted
       if (error instanceof Error && 'code' in error && error.code === '23505') {
-        throw new ConflictException({
-          code: 'EMAIL_ALREADY_IN_USE',
-          message: 'A user with this email already exists',
-        })
+        throw new EmailAlreadyInUseError()
       }
 
       // Log unexpected database errors for debugging
@@ -162,10 +154,7 @@ export class UserAuthService implements OnModuleInit {
     if (tokenResult.rowCount === 0) {
       // Add random delay to prevent timing attacks (50-150ms)
       await this.addRandomDelay(50, 150)
-      throw new BadRequestException({
-        code: 'INVALID_VERIFICATION_TOKEN',
-        message: 'The verification token is invalid',
-      })
+      throw new InvalidVerificationTokenError()
     }
 
     // Find matching token by comparing hashes (constant-time for all tokens)
@@ -204,19 +193,13 @@ export class UserAuthService implements OnModuleInit {
     if (hasExpiredMatch && !matchedToken) {
       // Add random delay to prevent timing attacks (50-150ms)
       await this.addRandomDelay(50, 150)
-      throw new BadRequestException({
-        code: 'VERIFICATION_TOKEN_EXPIRED',
-        message: 'The verification token has expired',
-      })
+      throw new VerificationTokenExpiredError()
     }
 
     if (!matchedToken) {
       // Add random delay to prevent timing attacks (50-150ms)
       await this.addRandomDelay(50, 150)
-      throw new BadRequestException({
-        code: 'INVALID_VERIFICATION_TOKEN',
-        message: 'The verification token is invalid',
-      })
+      throw new InvalidVerificationTokenError()
     }
 
     // Update user verification status

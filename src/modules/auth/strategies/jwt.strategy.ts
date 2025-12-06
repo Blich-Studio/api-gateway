@@ -1,20 +1,19 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
-import { Strategy, ExtractJwt } from 'passport-jwt'
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
-
-interface JwtPayload extends JWTPayload {
-  sub: string
-  email: string
-  name?: string
-}
+import { Strategy } from 'passport-custom'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+import type { Request } from 'express'
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly jwks: ReturnType<typeof createRemoteJWKSet>
+  private readonly issuer: string
+  private readonly audience: string
 
-  constructor(private configService: ConfigService) {
+  constructor(configService: ConfigService) {
+    super()
+
     const jwksUrl = configService.get<string>('JWKS_URL')
     const issuer = configService.get<string>('JWT_ISSUER')
     const audience = configService.get<string>('JWT_AUDIENCE')
@@ -23,37 +22,45 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new Error('Missing required JWT configuration')
     }
 
-    // Create JWKS instance once and cache it
-    const jwks = createRemoteJWKSet(new URL(jwksUrl))
-
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKeyProvider: (_request, rawJwtToken: string, done) => {
-        // Verify JWT using cached JWKS
-        jwtVerify(rawJwtToken, jwks, {
-          issuer,
-          audience,
-        })
-          .then(({ payload }) => {
-            // Pass the validated payload to passport
-            done(null, payload as never)
-          })
-          .catch((error: Error) => {
-            done(error, undefined as never)
-          })
-      },
-    })
-
-    this.jwks = jwks
+    // Create and cache JWKS instance for token verification
+    // This avoids fetching JWKS on every request
+    this.jwks = createRemoteJWKSet(new URL(jwksUrl))
+    this.issuer = issuer
+    this.audience = audience
   }
 
-  validate(payload: JwtPayload) {
-    // Payload is already validated by jwtVerify in secretOrKeyProvider
-    // Just transform it to the expected format
-    return {
-      userId: payload.sub,
-      email: payload.email,
-      name: payload.name,
+  async validate(req: Request): Promise<unknown> {
+    const authHeader = req.headers.authorization
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new Error('No auth token')
+    }
+
+    const token = authHeader.substring(7)
+
+    try {
+      const { payload } = await jwtVerify(token, this.jwks, {
+        issuer: this.issuer,
+        audience: this.audience,
+      })
+
+      // Validate required fields
+      if (
+        !payload.sub ||
+        typeof payload.sub !== 'string' ||
+        !payload.email ||
+        typeof payload.email !== 'string'
+      ) {
+        throw new Error('Invalid token payload')
+      }
+
+      return {
+        userId: payload.sub,
+        email: payload.email,
+        name: payload.name as string | undefined,
+      }
+    } catch (_error) {
+      throw new Error('Invalid or expired token')
     }
   }
 }

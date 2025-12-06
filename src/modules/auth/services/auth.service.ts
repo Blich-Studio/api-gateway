@@ -1,7 +1,17 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
+import { z } from 'zod'
 import { POSTGRES_CLIENT } from '../../database/postgres.module'
+import {
+  AuthenticationError,
+  InvalidCredentialsError,
+  EmailNotVerifiedError,
+  AuthServiceUnavailableError,
+  InvalidAuthResponseError,
+  TokenGenerationError,
+  MissingConfigurationError,
+} from '../../../common/errors'
 
 interface TokenPayload {
   sub: string
@@ -10,17 +20,20 @@ interface TokenPayload {
   role: 'admin' | 'writer' | 'reader'
 }
 
-interface TokenResponse {
-  token: string
-}
+// Zod schemas for runtime validation
+const TokenResponseSchema = z.object({
+  token: z.string().min(1),
+})
 
-interface User {
-  id: string
-  email: string
-  name: string
-  password_hash: string
-  is_verified: boolean
-}
+const UserRowSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string(),
+  password_hash: z.string(),
+  is_verified: z.boolean(),
+})
+
+type User = z.infer<typeof UserRowSchema>
 
 type DbRow = Record<string, unknown>
 
@@ -30,6 +43,7 @@ interface PostgresClient {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name)
   private jwksTokenEndpoint: string
   private jwksApiKey: string
 
@@ -41,9 +55,7 @@ export class AuthService {
     const jwksApiKey = this.configService.get<string>('JWKS_TOKEN_API_KEY')
 
     if (!jwksTokenEndpoint || !jwksApiKey) {
-      throw new Error(
-        'Missing JWKS configuration. Set JWKS_TOKEN_ENDPOINT and JWKS_TOKEN_API_KEY environment variables.'
-      )
+      throw new MissingConfigurationError('JWKS_TOKEN_ENDPOINT and JWKS_TOKEN_API_KEY')
     }
 
     this.jwksTokenEndpoint = jwksTokenEndpoint
@@ -55,12 +67,12 @@ export class AuthService {
     const user = await this.validateUser(email, password)
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials')
+      throw new InvalidCredentialsError()
     }
 
     // Check if user's email is verified
     if (!user.is_verified) {
-      throw new UnauthorizedException('Please verify your email before logging in')
+      throw new EmailNotVerifiedError()
     }
 
     // Request token from JWKS service
@@ -86,12 +98,12 @@ export class AuthService {
       SELECT id, email, name, password_hash, is_verified
       FROM users
       WHERE email = $1
-      LIMIT 1
     `
     const result = await this.postgresClient.query(query, [email])
 
     // Always hash the password even if user not found to prevent timing attacks
-    const dummyHash = '$2b$12$dummyHashToPreventTimingAttack1234567890123456789012'
+    // Use a realistic bcrypt hash to avoid fingerprinting
+    const dummyHash = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK' // bcrypt hash of 'dummy'
     const userExists = result.rowCount && result.rowCount > 0
 
     if (!userExists) {
@@ -101,13 +113,18 @@ export class AuthService {
     }
 
     const [row] = result.rows
-    const user: User = {
-      id: row.id as string,
-      email: row.email as string,
-      name: row.name as string,
-      password_hash: row.password_hash as string,
-      is_verified: row.is_verified as boolean,
+
+    // Validate database row structure at runtime
+    const parseResult = UserRowSchema.safeParse(row)
+    if (!parseResult.success) {
+      this.logger.error(
+        `Invalid user data from database: ${parseResult.error.message}`,
+        'validateUser'
+      )
+      return null
     }
+
+    const user = parseResult.data
 
     // Verify password with bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password_hash)
@@ -136,36 +153,82 @@ export class AuthService {
         signal: controller.signal,
       })
 
-      clearTimeout(timeout)
-
       if (!response.ok) {
-        // Log detailed error server-side, return generic error to client
-        console.error(`JWKS service error: ${response.status} ${response.statusText}`)
-        throw new UnauthorizedException('Unable to generate authentication token')
+        // Log error category server-side, return generic error to client
+        const errorCategory = response.status >= 500 ? 'service_error' : 'client_error'
+        this.logger.error(
+          `JWKS service error: status=${response.status}, category=${errorCategory}`,
+          'issueToken'
+        )
+
+        // Provide slightly more context based on status code
+        if (response.status >= 500) {
+          throw new AuthServiceUnavailableError()
+        }
+        throw new TokenGenerationError()
       }
 
-      const data = (await response.json()) as TokenResponse
-      return data.token
-    } catch (error) {
-      clearTimeout(timeout)
+      // Validate content-type header
+      const contentType = response.headers.get('content-type')
+      if (!contentType?.includes('application/json')) {
+        this.logger.error(`JWKS service returned non-JSON response: ${contentType}`, 'issueToken')
+        throw new InvalidAuthResponseError()
+      }
 
+      // Parse and validate JSON response
+      let jsonData: unknown
+      try {
+        jsonData = await response.json()
+      } catch (error) {
+        this.logger.error(
+          `Failed to parse JWKS service response: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          'issueToken'
+        )
+        throw new InvalidAuthResponseError()
+      }
+
+      // Validate response structure
+      const parseResult = TokenResponseSchema.safeParse(jsonData)
+      if (!parseResult.success) {
+        this.logger.error(
+          `Invalid token response structure: ${parseResult.error.message}`,
+          'issueToken'
+        )
+        throw new InvalidAuthResponseError()
+      }
+
+      return parseResult.data.token
+    } catch (error) {
       // Log detailed error server-side
       if (error instanceof Error) {
-        console.error('Token issuance error:', error.message)
+        this.logger.error(`Token issuance failed: ${error.message}`, error.stack, 'issueToken')
       }
 
       // Return generic error to client
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof InvalidCredentialsError ||
+        error instanceof EmailNotVerifiedError ||
+        error instanceof AuthServiceUnavailableError ||
+        error instanceof InvalidAuthResponseError ||
+        error instanceof TokenGenerationError
+      ) {
         throw error
       }
 
-      throw new UnauthorizedException('Authentication service temporarily unavailable')
+      // Check if it's a timeout/network error
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new AuthServiceUnavailableError('Authentication service request timed out')
+      }
+
+      throw new AuthServiceUnavailableError()
+    } finally {
+      clearTimeout(timeout)
     }
   }
 
-  refreshToken(_userId: string): Promise<never> {
+  refreshToken(): never {
     // TODO: Implement token refresh logic
-    // Verify refresh token and issue new access token
-    return Promise.reject(new Error('Not implemented'))
+    // Will require refresh token validation and new access token generation
+    throw new AuthenticationError('Token refresh not yet implemented')
   }
 }
