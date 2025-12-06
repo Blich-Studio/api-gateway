@@ -10,7 +10,29 @@ export default defineConfig({
     setupFiles: ['reflect-metadata'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'json-summary', 'html'],
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/*.spec.ts',
+        '**/*.e2e-spec.ts',
+        '**/test/**',
+        // Infrastructure modules - integration tested
+        '**/modules/database/**',
+        // Guards and decorators are simple wrappers - tested via integration
+        '**/guards/**',
+        '**/decorators/**',
+        // Error class definitions - tested via usage in services
+        '**/common/errors/**',
+      ],
+      thresholds: {
+        // Per-file thresholds (80% minimum per file)
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+        perFile: true,
+      },
     },
   },
 });

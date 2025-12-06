@@ -1,19 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { escapeHtml } from '../../common/utils/html.util'
 
 export const EMAIL_SERVICE = 'EMAIL_SERVICE'
-
-/**
- * Escapes HTML special characters to prevent XSS attacks
- */
-function escapeHtml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 export interface EmailVerificationData {
   email: string
