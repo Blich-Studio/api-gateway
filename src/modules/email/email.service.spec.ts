@@ -3,17 +3,6 @@ import { ConfigService } from '@nestjs/config'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EmailService } from './email.service'
 
-// Import the escapeHtml function for direct testing
-// Since it's not exported, we'll test it through the template generation
-function escapeHtml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
-
 describe('EmailService', () => {
   let service: EmailService
   let configService: ConfigService
@@ -236,34 +225,6 @@ describe('EmailService', () => {
       const template = service['getVerificationEmailTemplate'](name, url)
       
       expect(template).toContain('Test Company')
-    })
-  })
-
-  describe('escapeHtml', () => {
-    it('should escape ampersand', () => {
-      expect(escapeHtml('foo & bar')).toBe('foo &amp; bar')
-    })
-
-    it('should escape less than', () => {
-      expect(escapeHtml('5 < 10')).toBe('5 &lt; 10')
-    })
-
-    it('should escape greater than', () => {
-      expect(escapeHtml('10 > 5')).toBe('10 &gt; 5')
-    })
-
-    it('should escape double quotes', () => {
-      expect(escapeHtml('say "hello"')).toBe('say &quot;hello&quot;')
-    })
-
-    it('should escape single quotes', () => {
-      expect(escapeHtml("it's nice")).toBe('it&#039;s nice')
-    })
-
-    it('should escape all special characters together', () => {
-      const input = '<script>alert("XSS & malicious\'code")</script>'
-      const expected = '&lt;script&gt;alert(&quot;XSS &amp; malicious&#039;code&quot;)&lt;/script&gt;'
-      expect(escapeHtml(input)).toBe(expected)
     })
   })
 })
