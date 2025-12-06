@@ -60,20 +60,10 @@ steps:
       - '300'
       - '--set-env-vars'
       - >-
-        NODE_ENV=production,JWKS_URL=https://jwks.blichstudio.com/.well-known/jwks.json,JWKS_TOKEN_ENDPOINT=https://jwks.blichstudio.com/token,JWT_ISSUER=https://jwks.blichstudio.com,JWT_AUDIENCE=blich-api,ALLOWED_ORIGINS="https://blichstudio.com,https://www.blichstudio.com"
+        ^;^NODE_ENV=production;JWKS_URL=https://jwks.blichstudio.com/.well-known/jwks.json;JWKS_TOKEN_ENDPOINT=https://jwks.blichstudio.com/token;JWT_ISSUER=https://jwks.blichstudio.com;JWT_AUDIENCE=blich-api;ALLOWED_ORIGINS=https://blichstudio.com,https://www.blichstudio.com
       - '--set-secrets'
-      - >
-        POSTGRES_HOST=${_POSTGRES_HOST_SECRET}:latest,
-        POSTGRES_PORT=${_POSTGRES_PORT_SECRET}:latest,
-        POSTGRES_USER=${_POSTGRES_USER_SECRET}:latest,
-        POSTGRES_PASSWORD=${_POSTGRES_PASSWORD_SECRET}:latest,
-        POSTGRES_DB=${_POSTGRES_DB_SECRET}:latest,
-        POSTGRES_SSL=${_POSTGRES_SSL_SECRET}:latest,
-        POSTGRES_SSL_REJECT_UNAUTHORIZED=${_POSTGRES_SSL_REJECT_UNAUTHORIZED_SECRET}:latest,
-        POSTGRES_SSL_CA=${_POSTGRES_SSL_CA_SECRET}:latest,
-        BCRYPT_SALT_ROUNDS=${_BCRYPT_SALT_ROUNDS_SECRET}:latest,
-        VERIFICATION_TOKEN_EXPIRY_HOURS=${_VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET}:latest,
-        JWKS_TOKEN_API_KEY=${_JWKS_TOKEN_API_KEY_SECRET}:latest
+      - >-
+        POSTGRES_HOST=${_POSTGRES_HOST_SECRET}:latest,POSTGRES_PORT=${_POSTGRES_PORT_SECRET}:latest,POSTGRES_USER=${_POSTGRES_USER_SECRET}:latest,POSTGRES_PASSWORD=${_POSTGRES_PASSWORD_SECRET}:latest,POSTGRES_DB=${_POSTGRES_DB_SECRET}:latest,POSTGRES_SSL=${_POSTGRES_SSL_SECRET}:latest,POSTGRES_SSL_REJECT_UNAUTHORIZED=${_POSTGRES_SSL_REJECT_UNAUTHORIZED_SECRET}:latest,POSTGRES_SSL_CA=${_POSTGRES_SSL_CA_SECRET}:latest,BCRYPT_SALT_ROUNDS=${_BCRYPT_SALT_ROUNDS_SECRET}:latest,VERIFICATION_TOKEN_EXPIRY_HOURS=${_VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET}:latest,JWKS_TOKEN_API_KEY=${_JWKS_TOKEN_API_KEY_SECRET}:latest
       - '--vpc-connector'
       - '${_VPC_CONNECTOR}'
       - '--vpc-egress'
