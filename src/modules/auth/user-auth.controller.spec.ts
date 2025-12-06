@@ -33,14 +33,19 @@ describe('UserAuthController', () => {
       const registerDto = {
         email: 'test@example.com',
         password: 'StrongPass123!',
-        name: 'Test User',
+        nickname: 'testuser',
+        firstName: 'Test',
+        lastName: 'User',
       }
 
       const mockResponse = {
         id: 'user-123',
         email: registerDto.email,
-        name: registerDto.name,
+        nickname: registerDto.nickname,
+        firstName: registerDto.firstName,
+        lastName: registerDto.lastName,
         isVerified: false,
+        role: 'user' as const,
         createdAt: new Date(),
       }
 

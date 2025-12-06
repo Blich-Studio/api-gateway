@@ -10,7 +10,12 @@ const RegisterUserSchema = z.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/,
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (non-alphanumeric, including underscore)'
     ),
-  name: z.string().min(1, 'Name cannot be empty'),
+  nickname: z
+    .string()
+    .min(1, 'Nickname cannot be empty')
+    .max(255, 'Nickname cannot exceed 255 characters'),
+  firstName: z.string().optional().nullable(),
+  lastName: z.string().optional().nullable(),
 })
 
 export class RegisterUserDto extends createZodDto(RegisterUserSchema) {}

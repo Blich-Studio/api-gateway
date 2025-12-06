@@ -31,15 +31,17 @@ describe('AuthService - Behavior Tests', () => {
   const validUserInDb = {
     id: '550e8400-e29b-41d4-a716-446655440000',
     email: 'valid@example.com',
-    name: 'Valid User',
-    password_hash: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK', // hash of 'correct-password'
-    is_verified: true,
+    nickname: 'Valid User',
+    firstName: 'Valid',
+    lastName: 'User',
+    passwordHash: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK',
+    isVerified: true,
   }
 
   const unverifiedUserInDb = {
     ...validUserInDb,
     email: 'unverified@example.com',
-    is_verified: false,
+    isVerified: false,
   }
 
   const mockConfigService = {
@@ -107,7 +109,7 @@ describe('AuthService - Behavior Tests', () => {
         user: {
           id: validUserInDb.id,
           email: validUserInDb.email,
-          name: validUserInDb.name,
+          name: validUserInDb.nickname,
         },
       })
     })
@@ -253,9 +255,11 @@ describe('AuthService - Behavior Tests', () => {
     const validUser = {
       id: '550e8400-e29b-41d4-a716-446655440001',
       email: 'test@example.com',
-      name: 'Test User',
-      password_hash: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK',
-      is_verified: true,
+      nickname: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
+      passwordHash: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK',
+      isVerified: true,
     }
 
     it('should throw error for 4xx client errors from token service', async () => {

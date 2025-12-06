@@ -21,8 +21,11 @@ export class UserAuthController {
         data: {
           id: 'user-123',
           email: 'user@example.com',
-          name: 'John Doe',
+          nickname: 'johndoe',
+          firstName: 'John',
+          lastName: 'Doe',
           isVerified: false,
+          role: 'user',
           createdAt: '2025-11-28T10:00:00.000Z',
         },
       },
