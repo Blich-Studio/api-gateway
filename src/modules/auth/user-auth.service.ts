@@ -72,7 +72,7 @@ export class UserAuthService implements OnModuleInit {
   }
 
   async register(registerDto: RegisterUserDto): Promise<RegisterResponse> {
-    const { email, password, name } = registerDto
+    const { email, password, nickname, firstName, lastName } = registerDto
 
     // Check if user already exists before expensive password hashing
     const existsQuery = `SELECT 1 FROM users WHERE email = $1 LIMIT 1`
@@ -88,38 +88,53 @@ export class UserAuthService implements OnModuleInit {
     try {
       // Create user
       const query = `
-        INSERT INTO users (email, name, password_hash, is_verified, created_at)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, email, name, is_verified, created_at
+        INSERT INTO users (email, nickname, first_name, last_name, password_hash, is_verified, role, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, email, nickname, first_name, last_name, is_verified, role, created_at
       `
       const result = await this.postgresClient.query(query, [
         email,
-        name,
+        nickname,
+        firstName ?? null,
+        lastName ?? null,
         passwordHash,
         false,
+        'user',
         new Date(),
       ])
 
-      const [user] = result.rows
+      const user = result.rows[0] as {
+        id: string
+        email: string
+        nickname: string
+        first_name: string | null
+        last_name: string | null
+        is_verified: boolean
+        role: 'user' | 'writer' | 'admin'
+        created_at: Date
+      }
 
       // Generate verification token
-      const verificationToken = await this.createVerificationToken(user.id as string, email)
+      const verificationToken = await this.createVerificationToken(user.id, email)
 
       // Send verification email
       await this.emailService.sendVerificationEmail({
         email,
-        name,
+        name: user.first_name ?? user.nickname,
         token: verificationToken,
       })
 
       this.logger.log(`User registered successfully: ${email}`)
 
       return {
-        id: user.id as string,
-        email: user.email as string,
-        name: user.name as string,
-        isVerified: user.is_verified as boolean,
-        createdAt: user.created_at as Date,
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        isVerified: user.is_verified,
+        role: user.role,
+        createdAt: user.created_at,
       }
     } catch (error: unknown) {
       // Handle race condition where duplicate email was inserted
@@ -254,7 +269,7 @@ export class UserAuthService implements OnModuleInit {
     // Send verification email
     await this.emailService.sendVerificationEmail({
       email,
-      name: user.name,
+      name: user.firstName ?? user.nickname,
       token: verificationToken,
     })
 
@@ -265,7 +280,7 @@ export class UserAuthService implements OnModuleInit {
 
   private async findUserByEmail(email: string): Promise<UserWithPassword | null> {
     const query = `
-      SELECT id, email, name, password_hash, is_verified, created_at
+      SELECT id, email, nickname, first_name, last_name, password_hash, is_verified, role, created_at
       FROM users
       WHERE email = $1
     `
@@ -275,15 +290,28 @@ export class UserAuthService implements OnModuleInit {
       return null
     }
 
-    const [row] = result.rows
+    const row = result.rows[0] as {
+      id: string
+      email: string
+      nickname: string
+      first_name: string | null
+      last_name: string | null
+      password_hash: string
+      is_verified: boolean
+      role: 'user' | 'writer' | 'admin'
+      created_at: Date
+    }
 
     return {
-      id: row.id as string,
-      email: row.email as string,
-      name: row.name as string,
-      passwordHash: row.password_hash as string,
-      isVerified: row.is_verified as boolean,
-      createdAt: row.created_at as Date,
+      id: row.id,
+      email: row.email,
+      nickname: row.nickname,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      passwordHash: row.password_hash,
+      isVerified: row.is_verified,
+      role: row.role,
+      createdAt: row.created_at,
     }
   }
 

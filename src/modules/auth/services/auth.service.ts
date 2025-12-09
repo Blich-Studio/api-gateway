@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
-import { z } from 'zod'
 import { POSTGRES_CLIENT } from '../../database/postgres.module'
 import {
   AuthenticationError,
@@ -12,28 +11,7 @@ import {
   TokenGenerationError,
   MissingConfigurationError,
 } from '../../../common/errors'
-
-interface TokenPayload {
-  sub: string
-  email: string
-  name: string
-  role: 'admin' | 'writer' | 'reader'
-}
-
-// Zod schemas for runtime validation
-const TokenResponseSchema = z.object({
-  token: z.string().min(1),
-})
-
-const UserRowSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
-  name: z.string(),
-  password_hash: z.string(),
-  is_verified: z.boolean(),
-})
-
-type User = z.infer<typeof UserRowSchema>
+import { TokenPayload, TokenResponseSchema, User, UserRowSchema } from '../types/auth.types'
 
 type DbRow = Record<string, unknown>
 
@@ -63,23 +41,19 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    // Validate credentials against database
     const user = await this.validateUser(email, password)
 
     if (!user) {
       throw new InvalidCredentialsError()
     }
 
-    // Check if user's email is verified
-    if (!user.is_verified) {
+    if (!user.isVerified) {
       throw new EmailNotVerifiedError()
     }
-
-    // Request token from JWKS service
     const token = await this.issueToken({
       sub: user.id,
       email: user.email,
-      name: user.name,
+      name: user.nickname,
       role: 'reader', // Default role, can be enhanced later
     })
 
@@ -88,14 +62,21 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        name: user.nickname,
       },
     }
   }
 
   private async validateUser(email: string, password: string): Promise<User | null> {
     const query = `
-      SELECT id, email, name, password_hash, is_verified
+      SELECT 
+        id, 
+        email, 
+        nickname,
+        first_name as "firstName",
+        last_name as "lastName",
+        password_hash as "passwordHash",
+        is_verified as "isVerified"
       FROM users
       WHERE email = $1
     `
@@ -127,7 +108,7 @@ export class AuthService {
     const user = parseResult.data
 
     // Verify password with bcrypt
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash)
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
 
     if (!isPasswordValid) {
       return null
