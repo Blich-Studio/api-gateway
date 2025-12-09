@@ -92,7 +92,7 @@ substitutions:
   _BCRYPT_SALT_ROUNDS_SECRET: 'BCRYPT_SALT_ROUNDS'
   _VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET: 'VERIFICATION_TOKEN_EXPIRY_HOURS'
   _JWKS_TOKEN_API_KEY_SECRET: 'jwks-token-api-key'
-  _SENDGRID_API_KEY_SECRET: 'sendgrid-api-key'
+  _SENDGRID_API_KEY_SECRET: 'sendgrid_api_key'
 
 # Available secrets from Secret Manager
 availableSecrets:
