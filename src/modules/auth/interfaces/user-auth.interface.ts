@@ -1,8 +1,11 @@
 export interface User {
   id: string
   email: string
-  name: string
+  nickname: string
+  firstName: string | null
+  lastName: string | null
   isVerified: boolean
+  role: 'user' | 'writer' | 'admin'
   createdAt: Date
 }
 

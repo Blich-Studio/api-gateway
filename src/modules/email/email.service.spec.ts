@@ -64,6 +64,7 @@ describe('EmailService', () => {
 
       const calls = loggerSpy.mock.calls.flat().join('\n')
       expect(calls).toContain('VERIFICATION EMAIL')
+      expect(calls).toContain('Development Mode')
       expect(calls).toContain(emailData.email)
 
       loggerSpy.mockRestore()
@@ -140,7 +141,7 @@ describe('EmailService', () => {
       await service.sendVerificationEmail(emailData)
 
       expect(loggerWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Email provider not implemented')
+        expect.stringContaining('Email provider not fully configured')
       )
       expect(loggerWarnSpy).toHaveBeenCalledWith(
         expect.stringContaining('verification email NOT sent to: test@example.com')

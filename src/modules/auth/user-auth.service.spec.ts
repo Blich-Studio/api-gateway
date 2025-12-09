@@ -73,15 +73,20 @@ describe('UserAuthService', () => {
     const registerDto = {
       email: 'test@example.com',
       password: 'StrongPass123!',
-      name: 'Test User',
+      nickname: 'testuser',
+      firstName: 'Test',
+      lastName: 'User',
     }
 
     it('should successfully register a new user', async () => {
       const mockUser = {
         id: 'user-123',
         email: registerDto.email,
-        name: registerDto.name,
+        nickname: registerDto.nickname,
+        first_name: registerDto.firstName,
+        last_name: registerDto.lastName,
         is_verified: false,
+        role: 'user',
         created_at: new Date(),
       }
 
@@ -95,14 +100,17 @@ describe('UserAuthService', () => {
       expect(result).toEqual({
         id: mockUser.id,
         email: mockUser.email,
-        name: mockUser.name,
+        nickname: mockUser.nickname,
+        firstName: mockUser.first_name,
+        lastName: mockUser.last_name,
         isVerified: false,
+        role: 'user',
         createdAt: mockUser.created_at,
       })
       expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           email: registerDto.email,
-          name: registerDto.name,
+          name: registerDto.firstName,
           token: expect.any(String),
         })
       )
@@ -122,7 +130,9 @@ describe('UserAuthService', () => {
       const mockUser = {
         id: 'user-123',
         email: registerDto.email,
-        name: registerDto.name,
+        nickname: registerDto.nickname,
+        first_name: registerDto.firstName,
+        last_name: registerDto.lastName,
         is_verified: false,
         created_at: new Date(),
       }
@@ -356,7 +366,9 @@ describe('UserAuthService', () => {
         service.register({
           email: 'race@example.com',
           password: 'Password123!',
-          name: 'Race User',
+          nickname: 'raceuser',
+          firstName: 'Race',
+          lastName: 'User',
         })
       ).rejects.toThrow(EmailAlreadyInUseError)
     })
@@ -372,7 +384,9 @@ describe('UserAuthService', () => {
         service.register({
           email: 'error@example.com',
           password: 'Password123!',
-          name: 'Error User',
+          nickname: 'erroruser',
+          firstName: 'Error',
+          lastName: 'User',
         })
       ).rejects.toThrow('Database connection lost')
     })
@@ -400,7 +414,9 @@ describe('UserAuthService', () => {
         service.register({
           email: 'test@example.com',
           password: 'Password123!',
-          name: 'Test User',
+          nickname: 'testuser',
+          firstName: 'Test',
+          lastName: 'User',
         })
       ).rejects.toThrow('Token insert failed')
     })

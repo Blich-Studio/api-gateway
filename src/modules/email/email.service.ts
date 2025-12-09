@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { escapeHtml } from '../../common/utils/html.util'
+import sgMail from '@sendgrid/mail'
 
 export const EMAIL_SERVICE = 'EMAIL_SERVICE'
 
@@ -11,10 +12,29 @@ export interface EmailVerificationData {
 }
 
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name)
+  private sendgridApiKey: string | undefined
+  private emailFrom: string | undefined
 
   constructor(private readonly configService: ConfigService) {}
+
+  onModuleInit(): void {
+    this.sendgridApiKey = this.configService.get<string>('SENDGRID_API_KEY')
+    this.emailFrom = this.configService.get<string>('EMAIL_FROM')
+
+    if (this.sendgridApiKey && this.emailFrom) {
+      sgMail.setApiKey(this.sendgridApiKey)
+      // Note: setDataResidency('eu') is documented in SendGrid examples but not yet available in v8.1.6
+      // Uncomment below when upgrading to a version that supports it:
+      // sgMail.setDataResidency('eu')
+      this.logger.log('SendGrid email provider initialized')
+    } else if (process.env.NODE_ENV !== 'development') {
+      this.logger.warn(
+        'SendGrid is not configured. Set SENDGRID_API_KEY and EMAIL_FROM environment variables for email functionality.'
+      )
+    }
+  }
 
   async sendVerificationEmail(data: EmailVerificationData): Promise<void> {
     const { email, name, token } = data
@@ -23,38 +43,26 @@ export class EmailService {
 
     this.logger.log(`Preparing to send verification email to: ${email}`)
 
-    // TODO: Replace with your email provider implementation
-    // Example implementations below:
-
-    // Using SendGrid:
-    // const msg = {
-    //   to: email,
-    //   from: this.configService.getOrThrow<string>('EMAIL_FROM'),
-    //   subject: 'Verify your email address',
-    //   html: this.getVerificationEmailTemplate(name, verificationUrl),
-    // }
-    // await this.sendgridClient.send(msg)
-
-    // Using AWS SES:
-    // const params = {
-    //   Source: this.configService.getOrThrow<string>('EMAIL_FROM'),
-    //   Destination: { ToAddresses: [email] },
-    //   Message: {
-    //     Subject: { Data: 'Verify your email address' },
-    //     Body: {
-    //       Html: { Data: this.getVerificationEmailTemplate(name, verificationUrl) },
-    //     },
-    //   },
-    // }
-    // await this.sesClient.sendEmail(params).promise()
-
-    // Using Nodemailer:
-    // await this.transporter.sendMail({
-    //   from: this.configService.getOrThrow<string>('EMAIL_FROM'),
-    //   to: email,
-    //   subject: 'Verify your email address',
-    //   html: this.getVerificationEmailTemplate(name, verificationUrl),
-    // })
+    // If SendGrid is configured, use it to send the email
+    if (this.sendgridApiKey && this.emailFrom) {
+      try {
+        const msg = {
+          to: email,
+          from: this.emailFrom,
+          subject: 'Verify your email address',
+          html: this.getVerificationEmailTemplate(name, verificationUrl),
+        }
+        await sgMail.send(msg)
+        this.logger.log(`Verification email sent successfully to: ${email}`)
+        return
+      } catch (error) {
+        this.logger.error(
+          `Failed to send verification email via SendGrid to ${email}`,
+          error instanceof Error ? error.stack : error
+        )
+        throw error
+      }
+    }
 
     // For development: Log the verification URL (with redacted token)
     if (process.env.NODE_ENV === 'development') {
@@ -64,7 +72,7 @@ export class EmailService {
         `token=${token.substring(0, 8)}...`
       )
       this.logger.log('='.repeat(80))
-      this.logger.log('VERIFICATION EMAIL')
+      this.logger.log('VERIFICATION EMAIL (Development Mode)')
       this.logger.log(`To: ${email}`)
       this.logger.log(`Name: ${name}`)
       this.logger.log(`Token: ${token.substring(0, 8)}... (redacted)`)
@@ -73,8 +81,8 @@ export class EmailService {
     } else {
       // Warn in non-development environments that emails are not actually being sent
       this.logger.warn(
-        `Email provider not implemented - verification email NOT sent to: ${email}. ` +
-          `Implement an email provider in ${EmailService.name} before deploying to production.`
+        `Email provider not fully configured - verification email NOT sent to: ${email}. ` +
+          `Set SENDGRID_API_KEY and EMAIL_FROM environment variables for production use.`
       )
     }
 
