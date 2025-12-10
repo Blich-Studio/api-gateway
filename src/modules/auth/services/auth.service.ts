@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
+import { randomBytes } from 'crypto'
 import { POSTGRES_CLIENT } from '../../database/postgres.module'
 import {
   AuthenticationError,
@@ -57,8 +58,23 @@ export class AuthService {
       role: 'reader', // Default role, can be enhanced later
     })
 
+    // Generate and store refresh token
+    const refreshToken = this.generateRefreshToken()
+    const refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    try {
+      await this.postgresClient.query(
+        'UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2 WHERE id = $3',
+        [refreshToken, refreshTokenExpiresAt, user.id]
+      )
+    } catch (error) {
+      this.logger.error('Failed to store refresh token', error)
+      // Don't fail login if refresh token storage fails, but log it
+    }
+
     return {
       access_token: token,
+      refresh_token: refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -207,9 +223,65 @@ export class AuthService {
     }
   }
 
-  refreshToken(): never {
-    // TODO: Implement token refresh logic
-    // Will require refresh token validation and new access token generation
-    throw new AuthenticationError('Token refresh not yet implemented')
+  private generateRefreshToken(): string {
+    // Generate a secure random token (32 bytes = 256 bits)
+    return randomBytes(32).toString('hex')
+  }
+
+  async refreshToken(refreshToken: string): Promise<{ access_token: string }> {
+    if (!refreshToken) {
+      throw new AuthenticationError('Refresh token is required')
+    }
+
+    // Validate refresh token exists in database
+    const result = await this.postgresClient.query(
+      'SELECT id FROM users WHERE refresh_token = $1',
+      [refreshToken]
+    )
+
+    if (result.rowCount === 0) {
+      throw new AuthenticationError('Invalid or expired refresh token')
+    }
+
+    // Get new access token from JWKS service
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => {
+        controller.abort()
+      }, 10000)
+
+      const response = await fetch(this.jwksTokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': this.jwksApiKey,
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new AuthenticationError(`Token service returned ${response.status}`)
+      }
+
+      const data = (await response.json()) as Record<string, unknown>
+      clearTimeout(timeout)
+
+      if (typeof data.access_token !== 'string' || !data.access_token) {
+        throw new InvalidAuthResponseError('Invalid token response from service')
+      }
+
+      return { access_token: data.access_token }
+    } catch (error) {
+      if (error instanceof AuthenticationError) {
+        throw error
+      }
+
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new AuthServiceUnavailableError('Token refresh request timed out')
+      }
+
+      throw new AuthServiceUnavailableError('Failed to refresh access token')
+    }
   }
 }
