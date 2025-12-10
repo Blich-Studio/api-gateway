@@ -10,19 +10,10 @@ on:
       - 'package.json'
       - 'bun.lock'
       - '.github/workflows/quality-checks.yml'
-  push:
-    branches:
-      - main
-      - development
-    paths:
-      - 'src/**'
-      - 'package.json'
-      - 'bun.lock'
 
 permissions:
   contents: read
   packages: read
-
 jobs:
   quality-checks:
     runs-on: ubuntu-latest
