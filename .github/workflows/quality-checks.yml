@@ -1,21 +1,22 @@
-name: CI
+name: Quality Checks
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
-      - main
+      - development
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/quality-checks.yml'
 
 permissions:
   contents: read
   packages: read
-
 jobs:
   quality-checks:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,22 +29,22 @@ jobs:
           scope: '@blich-studio'
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
       - name: Install dependencies
+        run: bun install --frozen-lockfile
         env:
           NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bun install
 
-      - name: Type check
-        run: bun run typecheck
-
-      - name: Lint
+      - name: Run linter
         run: bun run lint
 
-      - name: Unit tests
+      - name: Run type check
+        run: bun run build
+
+      - name: Run tests
         run: bun run test
 
       - name: Generate coverage report

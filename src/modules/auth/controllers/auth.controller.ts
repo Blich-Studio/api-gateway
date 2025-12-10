@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth.service'
 import { JwtAuthGuard } from '../guards/jwt-auth.guard'
 import { CurrentUser } from '../decorators/current-user.decorator'
 import { LoginDto } from '../dto/login.dto'
+import { RefreshTokenDto } from '../dto/refresh-token.dto'
 
 @ApiTags('auth')
 @Controller('auth')
@@ -41,6 +42,33 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60 } }) // 5 requests per 60 seconds
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password)
+  }
+
+  @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiResponse({
+    status: 200,
+    description: 'New access token generated',
+    schema: {
+      example: {
+        access_token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired refresh token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Invalid or expired refresh token',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @Throttle({ default: { limit: 10, ttl: 60 } }) // 10 requests per 60 seconds
+  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refreshToken(refreshTokenDto.refreshToken)
   }
 
   @UseGuards(JwtAuthGuard)

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { AuthController } from './auth.controller'
 import { AuthService } from '../services/auth.service'
 import { LoginDto } from '../dto/login.dto'
+import { RefreshTokenDto } from '../dto/refresh-token.dto'
 import {
   InvalidCredentialsError,
   EmailNotVerifiedError,
@@ -15,6 +16,7 @@ describe('AuthController - Contract Tests', () => {
 
   const mockAuthService = {
     login: vi.fn(),
+    refreshToken: vi.fn(),
   }
 
   beforeEach(async () => {
@@ -157,6 +159,34 @@ describe('AuthController - Contract Tests', () => {
       // Then: should return exact same structure without transformation
       expect(result).toBe(fullUserData)
       expect(JSON.stringify(result)).toBe(JSON.stringify(fullUserData))
+    })
+  })
+
+  describe('POST /auth/refresh', () => {
+    const validRefreshInput: RefreshTokenDto = {
+      refreshToken: 'valid-refresh-token-1234567890',
+    }
+
+    it('should return new access token for valid refresh token', async () => {
+      const expectedOutput = {
+        access_token: 'new.jwt.token',
+      }
+
+      vi.mocked(mockAuthService.refreshToken).mockResolvedValue(expectedOutput)
+
+      const result = await controller.refresh(validRefreshInput)
+
+      expect(result).toEqual(expectedOutput)
+      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(validRefreshInput.refreshToken)
+    })
+
+    it('should propagate refresh token errors', async () => {
+      const refreshError = new AuthServiceUnavailableError()
+      vi.mocked(mockAuthService.refreshToken).mockRejectedValue(refreshError)
+
+      await expect(controller.refresh(validRefreshInput)).rejects.toThrow(
+        AuthServiceUnavailableError
+      )
     })
   })
 

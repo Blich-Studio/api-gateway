@@ -20,8 +20,14 @@ vi.mock('bcrypt', () => ({
   compare: vi.fn(),
 }))
 
+// Mock crypto module
+vi.mock('crypto', () => ({
+  randomBytes: vi.fn(),
+}))
+
 // Import bcrypt after mocking
 import * as bcrypt from 'bcrypt'
+import { randomBytes } from 'crypto'
 
 describe('AuthService - Behavior Tests', () => {
   let service: AuthService
@@ -100,12 +106,66 @@ describe('AuthService - Behavior Tests', () => {
         json: async () => ({ token: mockToken }),
       })
 
+      // And: randomBytes generates a predictable refresh token
+      const mockRefreshToken = 'mocked-refresh-token-1234567890abcdef'
+      vi.mocked(randomBytes).mockReturnValue({
+        toString: () => mockRefreshToken,
+      } as any)
+
       // When: user attempts to login with correct credentials
       const result = await service.login(validUserInDb.email, 'correct-password')
 
       // Then: should return access token and user information
       expect(result).toEqual({
         access_token: mockToken,
+        refresh_token: mockRefreshToken,
+        user: {
+          id: validUserInDb.id,
+          email: validUserInDb.email,
+          name: validUserInDb.nickname,
+        },
+      })
+      // And: refresh token should be stored in database
+      expect(mockPostgresClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE users SET refresh_token ='),
+        expect.arrayContaining([mockRefreshToken, expect.any(Date), validUserInDb.id])
+      )
+    })
+
+    it('should still return login response even if refresh token storage fails', async () => {
+      // Given: user exists and password is correct
+      mockPostgresClient.query.mockResolvedValueOnce({
+        rows: [validUserInDb],
+        rowCount: 1,
+      })
+
+      // And: password verification succeeds
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+
+      // And: token service returns valid token
+      const mockToken = 'valid.jwt.token'
+      ;(global.fetch as any).mockResolvedValue({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ token: mockToken }),
+      })
+
+      // And: randomBytes generates a predictable refresh token
+      const mockRefreshToken = 'mocked-refresh-token-1234567890abcdef'
+      vi.mocked(randomBytes).mockReturnValue({
+        toString: () => mockRefreshToken,
+      } as any)
+
+      // And: refresh token storage fails
+      mockPostgresClient.query.mockRejectedValueOnce(new Error('Database error'))
+
+      // When: user attempts to login
+      const result = await service.login(validUserInDb.email, 'correct-password')
+
+      // Then: should still return login response (refresh token storage failure is non-fatal)
+      expect(result).toEqual({
+        access_token: mockToken,
+        refresh_token: mockRefreshToken,
         user: {
           id: validUserInDb.id,
           email: validUserInDb.email,
@@ -240,14 +300,77 @@ describe('AuthService - Behavior Tests', () => {
     })
   })
 
-  describe('refreshToken - Contract Tests', () => {
-    it('should throw UnauthorizedException as not implemented', () => {
-      // Given: refresh token functionality is not yet implemented
-      // When: calling refreshToken
-      // Then: should throw AuthenticationError
-      expect(() => service.refreshToken()).toThrow(
-        AuthenticationError
+  describe('refreshToken', () => {
+    it('should generate new access token from valid refresh token', async () => {
+      // Given: a valid refresh token
+      const refreshToken = 'valid-refresh-token-12345'
+      const userId = '550e8400-e29b-41d4-a716-446655440001'
+      const newAccessToken = 'new-access-token-jwt'
+
+      mockPostgresClient.query.mockResolvedValueOnce({
+        rows: [{ id: userId, refresh_token: refreshToken }],
+        rowCount: 1,
+      })
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: newAccessToken }),
+      } as Response)
+
+      // When: calling refreshToken with valid refresh token
+      const result = await service.refreshToken(refreshToken)
+
+      // Then: should return new access token
+      expect(result).toEqual({ access_token: newAccessToken })
+      expect(mockPostgresClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT id FROM users WHERE refresh_token ='),
+        [refreshToken]
       )
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:3100/token',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'X-API-Key': 'test-api-key',
+            'Content-Type': 'application/json',
+          }),
+        })
+      )
+    })
+
+    it('should throw InvalidRefreshTokenError for invalid refresh token', async () => {
+      // Given: an invalid refresh token
+      const invalidToken = 'invalid-refresh-token'
+
+      mockPostgresClient.query.mockResolvedValueOnce({
+        rows: [],
+        rowCount: 0,
+      })
+
+      // When/Then: calling refreshToken with invalid token should throw
+      await expect(service.refreshToken(invalidToken)).rejects.toThrow(
+        'Invalid or expired refresh token'
+      )
+    })
+
+    it('should throw error if token endpoint returns error', async () => {
+      // Given: valid refresh token but token endpoint fails
+      const refreshToken = 'valid-refresh-token-12345'
+      const userId = '550e8400-e29b-41d4-a716-446655440001'
+
+      mockPostgresClient.query.mockResolvedValueOnce({
+        rows: [{ id: userId, refresh_token: refreshToken }],
+        rowCount: 1,
+      })
+
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response)
+
+      // When/Then: should throw error
+      await expect(service.refreshToken(refreshToken)).rejects.toThrow()
     })
   })
 
