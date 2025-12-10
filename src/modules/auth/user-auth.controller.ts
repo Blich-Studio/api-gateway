@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
 import { RegisterUserDto } from './dto/register-user.dto'
@@ -60,6 +60,28 @@ export class UserAuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   async register(@Body() registerDto: RegisterUserDto) {
     return this.userAuthService.register(registerDto)
+  }
+
+  @Get('verify')
+  @ApiOperation({ summary: 'Verify user email with token (GET endpoint for email links)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Email successfully verified',
+    schema: {
+      example: {
+        data: {
+          message: 'Email verified successfully',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid or expired token',
+  })
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
+  async verifyEmailGet(@Query('token') token: string) {
+    return this.userAuthService.verifyEmail({ token })
   }
 
   @Post('verify-email')
