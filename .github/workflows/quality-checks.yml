@@ -34,6 +34,8 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Run linter
         run: bun run lint
@@ -43,3 +45,15 @@ jobs:
 
       - name: Run tests
         run: bun run test
+
+      - name: Generate coverage report
+        run: bun run test -- --coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
