@@ -132,6 +132,48 @@ describe('AuthService - Behavior Tests', () => {
       )
     })
 
+    it('should still return login response even if refresh token storage fails', async () => {
+      // Given: user exists and password is correct
+      mockPostgresClient.query.mockResolvedValueOnce({
+        rows: [validUserInDb],
+        rowCount: 1,
+      })
+
+      // And: password verification succeeds
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+
+      // And: token service returns valid token
+      const mockToken = 'valid.jwt.token'
+      ;(global.fetch as any).mockResolvedValue({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ token: mockToken }),
+      })
+
+      // And: randomBytes generates a predictable refresh token
+      const mockRefreshToken = 'mocked-refresh-token-1234567890abcdef'
+      vi.mocked(randomBytes).mockReturnValue({
+        toString: () => mockRefreshToken,
+      } as any)
+
+      // And: refresh token storage fails
+      mockPostgresClient.query.mockRejectedValueOnce(new Error('Database error'))
+
+      // When: user attempts to login
+      const result = await service.login(validUserInDb.email, 'correct-password')
+
+      // Then: should still return login response (refresh token storage failure is non-fatal)
+      expect(result).toEqual({
+        access_token: mockToken,
+        refresh_token: mockRefreshToken,
+        user: {
+          id: validUserInDb.id,
+          email: validUserInDb.email,
+          name: validUserInDb.nickname,
+        },
+      })
+    })
+
     it('should throw UnauthorizedException when email does not exist', async () => {
       // Given: user does not exist in database
       mockPostgresClient.query.mockResolvedValue({
