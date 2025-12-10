@@ -3,7 +3,6 @@ name: Quality Checks
 on:
   pull_request:
     branches:
-      - main
       - development
     paths:
       - 'src/**'
