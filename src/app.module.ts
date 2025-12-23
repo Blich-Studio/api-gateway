@@ -5,6 +5,11 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { AuthModule } from './modules/auth/auth.module'
+import { TagsModule } from './modules/tags/tags.module'
+import { ArticlesModule } from './modules/articles/articles.module'
+import { ProjectsModule } from './modules/projects/projects.module'
+import { CommentsModule } from './modules/comments/comments.module'
+import { LikesModule } from './modules/likes/likes.module'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 @Module({
@@ -19,6 +24,11 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
       },
     ]),
     AuthModule,
+    TagsModule,
+    ArticlesModule,
+    ProjectsModule,
+    CommentsModule,
+    LikesModule,
   ],
   controllers: [AppController],
   providers: [
