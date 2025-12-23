@@ -11,6 +11,7 @@ export const UserRowSchema = z.object({
   lastName: z.string().nullable(),
   passwordHash: z.string(),
   isVerified: z.boolean(),
+  role: z.enum(['reader', 'writer', 'admin']),
 })
 
 /**

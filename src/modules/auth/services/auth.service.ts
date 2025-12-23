@@ -55,7 +55,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       name: user.nickname,
-      role: 'reader', // Default role, can be enhanced later
+      role: user.role,
     })
 
     // Generate and store refresh token
@@ -79,6 +79,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.nickname,
+        role: user.role,
       },
     }
   }
@@ -92,7 +93,8 @@ export class AuthService {
         first_name as "firstName",
         last_name as "lastName",
         password_hash as "passwordHash",
-        is_verified as "isVerified"
+        is_verified as "isVerified",
+        role
       FROM users
       WHERE email = $1
     `
