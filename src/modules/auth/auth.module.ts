@@ -8,11 +8,12 @@ import { UserAuthController } from './user-auth.controller'
 import { AuthService } from './services/auth.service'
 import { AuthController } from './controllers/auth.controller'
 import { JwtStrategy } from './strategies/jwt.strategy'
+import { RolesGuard } from './guards/roles.guard'
 
 @Module({
   imports: [ConfigModule, PostgresModule, EmailModule, PassportModule],
-  providers: [UserAuthService, AuthService, JwtStrategy],
+  providers: [UserAuthService, AuthService, JwtStrategy, RolesGuard],
   controllers: [UserAuthController, AuthController],
-  exports: [UserAuthService, AuthService],
+  exports: [UserAuthService, AuthService, RolesGuard],
 })
 export class AuthModule {}

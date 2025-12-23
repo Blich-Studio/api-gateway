@@ -13,6 +13,8 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard'
+import { RolesGuard } from '../auth/guards/roles.guard'
+import { Roles } from '../auth/decorators/roles.decorator'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { ArticlesService } from './articles.service'
 import { CreateArticleDto, UpdateArticleDto, ArticleQueryDto } from './dto/article.dto'
@@ -54,21 +56,24 @@ export class ArticlesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new article' })
+  @ApiOperation({ summary: 'Create a new article (writer/admin only)' })
   @ApiResponse({ status: 201, description: 'Article created successfully' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   @ApiResponse({ status: 409, description: 'Article with this slug already exists' })
   async create(@Body() dto: CreateArticleDto, @CurrentUser() user: AuthUser) {
     return this.articlesService.create(dto, user.userId)
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update an article' })
+  @ApiOperation({ summary: 'Update an article (writer/admin only)' })
   @ApiResponse({ status: 200, description: 'Article updated successfully' })
-  @ApiResponse({ status: 403, description: 'You can only edit your own articles' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions or not article owner' })
   @ApiResponse({ status: 404, description: 'Article not found' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -79,11 +84,12 @@ export class ArticlesController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete an article' })
+  @ApiOperation({ summary: 'Delete an article (writer/admin only)' })
   @ApiResponse({ status: 200, description: 'Article deleted successfully' })
-  @ApiResponse({ status: 403, description: 'You can only delete your own articles' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions or not article owner' })
   @ApiResponse({ status: 404, description: 'Article not found' })
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
     await this.articlesService.delete(id, user.userId)
