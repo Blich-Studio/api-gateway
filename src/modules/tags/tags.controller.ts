@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { RolesGuard } from '../auth/guards/roles.guard'
+import { Roles } from '../auth/decorators/roles.decorator'
 import { TagsService } from './tags.service'
 import { CreateTagDto, UpdateTagDto, TagQueryDto } from './dto/tag.dto'
 
@@ -44,20 +46,24 @@ export class TagsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new tag' })
+  @ApiOperation({ summary: 'Create a new tag (writer/admin only)' })
   @ApiResponse({ status: 201, description: 'Tag created successfully' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   @ApiResponse({ status: 409, description: 'Tag with this name already exists' })
   async create(@Body() dto: CreateTagDto) {
     return this.tagsService.create(dto)
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a tag' })
+  @ApiOperation({ summary: 'Update a tag (writer/admin only)' })
   @ApiResponse({ status: 200, description: 'Tag updated successfully' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   @ApiResponse({ status: 404, description: 'Tag not found' })
   @ApiResponse({ status: 409, description: 'Tag with this name already exists' })
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTagDto) {
@@ -65,10 +71,12 @@ export class TagsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a tag' })
+  @ApiOperation({ summary: 'Delete a tag (admin only)' })
   @ApiResponse({ status: 200, description: 'Tag deleted successfully' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   @ApiResponse({ status: 404, description: 'Tag not found' })
   async delete(@Param('id', ParseUUIDPipe) id: string) {
     await this.tagsService.delete(id)

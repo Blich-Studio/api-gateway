@@ -45,7 +45,7 @@ describe('UserAuthController', () => {
         firstName: registerDto.firstName,
         lastName: registerDto.lastName,
         isVerified: false,
-        role: 'user' as const,
+        role: 'reader' as const,
         createdAt: new Date(),
       }
 

@@ -25,7 +25,7 @@ export class UserAuthController {
           firstName: 'John',
           lastName: 'Doe',
           isVerified: false,
-          role: 'user',
+          role: 'reader',
           createdAt: '2025-11-28T10:00:00.000Z',
         },
       },

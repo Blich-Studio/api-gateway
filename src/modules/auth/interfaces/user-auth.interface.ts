@@ -5,7 +5,7 @@ export interface User {
   firstName: string | null
   lastName: string | null
   isVerified: boolean
-  role: 'user' | 'writer' | 'admin'
+  role: 'reader' | 'writer' | 'admin'
   createdAt: Date
 }
 
