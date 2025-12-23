@@ -13,6 +13,8 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard'
+import { RolesGuard } from '../auth/guards/roles.guard'
+import { Roles } from '../auth/decorators/roles.decorator'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { ProjectsService } from './projects.service'
 import { CreateProjectDto, UpdateProjectDto, ProjectQueryDto } from './dto/project.dto'
@@ -54,21 +56,24 @@ export class ProjectsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new project' })
+  @ApiOperation({ summary: 'Create a new project (writer/admin only)' })
   @ApiResponse({ status: 201, description: 'Project created successfully' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   @ApiResponse({ status: 409, description: 'Project with this slug already exists' })
   async create(@Body() dto: CreateProjectDto, @CurrentUser() user: AuthUser) {
     return this.projectsService.create(dto, user.userId)
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a project' })
+  @ApiOperation({ summary: 'Update a project (writer/admin only)' })
   @ApiResponse({ status: 200, description: 'Project updated successfully' })
-  @ApiResponse({ status: 403, description: 'You can only edit your own projects' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions or not project owner' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -79,11 +84,12 @@ export class ProjectsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @Roles('writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a project' })
+  @ApiOperation({ summary: 'Delete a project (writer/admin only)' })
   @ApiResponse({ status: 200, description: 'Project deleted successfully' })
-  @ApiResponse({ status: 403, description: 'You can only delete your own projects' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions or not project owner' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
     await this.projectsService.delete(id, user.userId)

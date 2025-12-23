@@ -1,6 +1,8 @@
 import { Controller, Post, Delete, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { RolesGuard } from '../auth/guards/roles.guard'
+import { Roles } from '../auth/decorators/roles.decorator'
 import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { LikesService } from './likes.service'
 
@@ -17,9 +19,10 @@ export class LikesController {
   // ============ Article Likes ============
 
   @Post('articles/:id/like')
-  @UseGuards(JwtAuthGuard)
+  @Roles('reader', 'writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Like an article' })
+  @ApiOperation({ summary: 'Like an article (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Article liked successfully' })
   @ApiResponse({ status: 404, description: 'Article not found' })
   @ApiResponse({ status: 409, description: 'Article already liked' })
@@ -28,9 +31,10 @@ export class LikesController {
   }
 
   @Delete('articles/:id/like')
-  @UseGuards(JwtAuthGuard)
+  @Roles('reader', 'writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Unlike an article' })
+  @ApiOperation({ summary: 'Unlike an article (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Article unliked successfully' })
   @ApiResponse({ status: 404, description: 'Article or like not found' })
   async unlikeArticle(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
@@ -40,9 +44,10 @@ export class LikesController {
   // ============ Project Likes ============
 
   @Post('projects/:id/like')
-  @UseGuards(JwtAuthGuard)
+  @Roles('reader', 'writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Like a project' })
+  @ApiOperation({ summary: 'Like a project (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Project liked successfully' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   @ApiResponse({ status: 409, description: 'Project already liked' })
@@ -51,9 +56,10 @@ export class LikesController {
   }
 
   @Delete('projects/:id/like')
-  @UseGuards(JwtAuthGuard)
+  @Roles('reader', 'writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Unlike a project' })
+  @ApiOperation({ summary: 'Unlike a project (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Project unliked successfully' })
   @ApiResponse({ status: 404, description: 'Project or like not found' })
   async unlikeProject(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
@@ -63,9 +69,10 @@ export class LikesController {
   // ============ Comment Likes ============
 
   @Post('comments/:id/like')
-  @UseGuards(JwtAuthGuard)
+  @Roles('reader', 'writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Like a comment' })
+  @ApiOperation({ summary: 'Like a comment (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Comment liked successfully' })
   @ApiResponse({ status: 404, description: 'Comment not found' })
   @ApiResponse({ status: 409, description: 'Comment already liked' })
@@ -74,9 +81,10 @@ export class LikesController {
   }
 
   @Delete('comments/:id/like')
-  @UseGuards(JwtAuthGuard)
+  @Roles('reader', 'writer', 'admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Unlike a comment' })
+  @ApiOperation({ summary: 'Unlike a comment (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Comment unliked successfully' })
   @ApiResponse({ status: 404, description: 'Comment or like not found' })
   async unlikeComment(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
