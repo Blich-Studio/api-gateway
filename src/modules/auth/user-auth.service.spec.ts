@@ -86,7 +86,7 @@ describe('UserAuthService', () => {
         first_name: registerDto.firstName,
         last_name: registerDto.lastName,
         is_verified: false,
-        role: 'user',
+        role: 'reader',
         created_at: new Date(),
       }
 
@@ -104,7 +104,7 @@ describe('UserAuthService', () => {
         firstName: mockUser.first_name,
         lastName: mockUser.last_name,
         isVerified: false,
-        role: 'user',
+        role: 'reader',
         createdAt: mockUser.created_at,
       })
       expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(

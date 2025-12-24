@@ -79,7 +79,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.nickname,
-        role: user.role,
+        // Note: role is NOT included here - client should decode it from the signed JWT token
       },
     }
   }

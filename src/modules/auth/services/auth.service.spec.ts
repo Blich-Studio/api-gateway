@@ -42,6 +42,7 @@ describe('AuthService - Behavior Tests', () => {
     lastName: 'User',
     passwordHash: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK',
     isVerified: true,
+    role: 'reader' as const,
   }
 
   const unverifiedUserInDb = {
@@ -383,6 +384,7 @@ describe('AuthService - Behavior Tests', () => {
       lastName: 'User',
       passwordHash: '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5jtRPZsLqzXrK',
       isVerified: true,
+      role: 'reader' as const,
     }
 
     it('should throw error for 4xx client errors from token service', async () => {
