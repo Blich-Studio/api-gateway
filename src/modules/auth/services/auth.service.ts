@@ -64,7 +64,7 @@ export class AuthService {
 
     try {
       await this.postgresClient.query(
-        'UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2 WHERE id = $3',
+        'UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2, last_login_at = NOW() WHERE id = $3',
         [refreshToken, refreshTokenExpiresAt, user.id]
       )
     } catch (error) {
