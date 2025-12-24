@@ -86,7 +86,7 @@ export class UserAuthService implements OnModuleInit {
     const passwordHash = await this.hashPassword(password)
 
     try {
-      // Create user
+      // Create user (new users always start as 'reader')
       const query = `
         INSERT INTO users (email, nickname, first_name, last_name, password_hash, is_verified, role, created_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -99,7 +99,7 @@ export class UserAuthService implements OnModuleInit {
         lastName ?? null,
         passwordHash,
         false,
-        'user',
+        'reader',
         new Date(),
       ])
 
@@ -110,7 +110,7 @@ export class UserAuthService implements OnModuleInit {
         first_name: string | null
         last_name: string | null
         is_verified: boolean
-        role: 'user' | 'writer' | 'admin'
+        role: 'reader' | 'writer' | 'admin'
         created_at: Date
       }
 
@@ -298,7 +298,7 @@ export class UserAuthService implements OnModuleInit {
       last_name: string | null
       password_hash: string
       is_verified: boolean
-      role: 'user' | 'writer' | 'admin'
+      role: 'reader' | 'writer' | 'admin'
       created_at: Date
     }
 

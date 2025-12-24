@@ -60,10 +60,10 @@ steps:
       - '300'
       - '--set-env-vars'
       - >-
-        ^;^NODE_ENV=production;APP_URL=https://api.blichstudio.com;JWKS_URL=https://jwks.blichstudio.com/.well-known/jwks.json;JWKS_TOKEN_ENDPOINT=https://jwks.blichstudio.com/token;JWT_ISSUER=https://jwks.blichstudio.com;JWT_AUDIENCE=blich-api;ALLOWED_ORIGINS=https://blichstudio.com,https://www.blichstudio.com
+        ^;^NODE_ENV=production;APP_URL=https://api.blichstudio.com;JWKS_URL=https://jwks.blichstudio.com/.well-known/jwks.json;JWKS_TOKEN_ENDPOINT=https://jwks.blichstudio.com/token;JWT_ISSUER=https://jwks.blichstudio.com;JWT_AUDIENCE=blich-api;ALLOWED_ORIGINS=https://blichstudio.com,https://www.blichstudio.com;GCP_PROJECT_ID=${PROJECT_ID}
       - '--set-secrets'
       - >-
-        POSTGRES_HOST=${_POSTGRES_HOST_SECRET}:latest,POSTGRES_PORT=${_POSTGRES_PORT_SECRET}:latest,POSTGRES_USER=${_POSTGRES_USER_SECRET}:latest,POSTGRES_PASSWORD=${_POSTGRES_PASSWORD_SECRET}:latest,POSTGRES_DB=${_POSTGRES_DB_SECRET}:latest,POSTGRES_SSL=${_POSTGRES_SSL_SECRET}:latest,POSTGRES_SSL_REJECT_UNAUTHORIZED=${_POSTGRES_SSL_REJECT_UNAUTHORIZED_SECRET}:latest,POSTGRES_SSL_CA=${_POSTGRES_SSL_CA_SECRET}:latest,BCRYPT_SALT_ROUNDS=${_BCRYPT_SALT_ROUNDS_SECRET}:latest,VERIFICATION_TOKEN_EXPIRY_HOURS=${_VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET}:latest,JWKS_TOKEN_API_KEY=${_JWKS_TOKEN_API_KEY_SECRET}:latest,SENDGRID_API_KEY=${_SENDGRID_API_KEY_SECRET}:latest,EMAIL_FROM=${_EMAIL_FROM_SECRET}:latest
+        POSTGRES_HOST=${_POSTGRES_HOST_SECRET}:latest,POSTGRES_PORT=${_POSTGRES_PORT_SECRET}:latest,POSTGRES_USER=${_POSTGRES_USER_SECRET}:latest,POSTGRES_PASSWORD=${_POSTGRES_PASSWORD_SECRET}:latest,POSTGRES_DB=${_POSTGRES_DB_SECRET}:latest,POSTGRES_SSL=${_POSTGRES_SSL_SECRET}:latest,POSTGRES_SSL_REJECT_UNAUTHORIZED=${_POSTGRES_SSL_REJECT_UNAUTHORIZED_SECRET}:latest,POSTGRES_SSL_CA=${_POSTGRES_SSL_CA_SECRET}:latest,BCRYPT_SALT_ROUNDS=${_BCRYPT_SALT_ROUNDS_SECRET}:latest,VERIFICATION_TOKEN_EXPIRY_HOURS=${_VERIFICATION_TOKEN_EXPIRY_HOURS_SECRET}:latest,JWKS_TOKEN_API_KEY=${_JWKS_TOKEN_API_KEY_SECRET}:latest,SENDGRID_API_KEY=${_SENDGRID_API_KEY_SECRET}:latest,EMAIL_FROM=${_EMAIL_FROM_SECRET}:latest,GCS_BUCKET_NAME=${_GCS_BUCKET_NAME_SECRET}:latest
       - '--vpc-connector'
       - '${_VPC_CONNECTOR}'
       - '--vpc-egress'
@@ -94,6 +94,7 @@ substitutions:
   _JWKS_TOKEN_API_KEY_SECRET: 'jwks-token-api-key'
   _SENDGRID_API_KEY_SECRET: 'sendgrid_api_key'
   _EMAIL_FROM_SECRET: 'EMAIL_FROM'
+  _GCS_BUCKET_NAME_SECRET: 'GCS_BUCKET_NAME'
 
 # Available secrets from Secret Manager
 availableSecrets:

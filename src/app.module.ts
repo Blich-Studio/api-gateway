@@ -10,6 +10,9 @@ import { ArticlesModule } from './modules/articles/articles.module'
 import { ProjectsModule } from './modules/projects/projects.module'
 import { CommentsModule } from './modules/comments/comments.module'
 import { LikesModule } from './modules/likes/likes.module'
+import { UsersModule } from './modules/users/users.module'
+import { UploadsModule } from './modules/uploads/uploads.module'
+import { ActivityModule } from './modules/activity/activity.module'
 import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 @Module({
@@ -29,6 +32,9 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     ProjectsModule,
     CommentsModule,
     LikesModule,
+    UsersModule,
+    UploadsModule,
+    ActivityModule,
   ],
   controllers: [AppController],
   providers: [
