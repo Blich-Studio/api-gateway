@@ -9,9 +9,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
+  BadRequestException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger'
@@ -60,19 +58,28 @@ export class UploadsController {
   @ApiResponse({ status: 403, description: 'Forbidden - writer/admin only' })
   @ApiResponse({ status: 413, description: 'File too large' })
   async uploadFile(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
-          // Accept image/*, video/* and application/pdf MIME types
-          new FileTypeValidator({ fileType: /^(?:image\/.*|video\/.*|application\/pdf)$/ }),
-        ],
-      })
-    )
-    file: MulterFile,
+    @UploadedFile() file: MulterFile,
     @Query('folder') folder = 'general',
     @CurrentUser() user: AuthUser
   ) {
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    // Allow runtime check for file presence even if types indicate it's defined
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!file?.buffer) {
+      throw new BadRequestException('No file uploaded')
+    }
+    if (file.buffer.length > maxSize) {
+      throw new BadRequestException('File too large')
+    }
+
+    const mimetype = file.mimetype || ''
+    const allowed = /^(?:image\/.*|video\/.*|application\/pdf)$/
+    if (!allowed.test(mimetype)) {
+      throw new BadRequestException(
+        `Validation failed (current file type is ${mimetype}, expected image/*, video/* or application/pdf)`
+      )
+    }
+
     return this.uploadsService.uploadFile(
       file.buffer,
       file.originalname,
