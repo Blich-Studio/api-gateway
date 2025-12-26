@@ -64,7 +64,8 @@ export class UploadsController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
-          new FileTypeValidator({ fileType: /^(image|video|application\/pdf)/ }),
+          // Accept image/*, video/* and application/pdf MIME types
+          new FileTypeValidator({ fileType: /^(?:image\/.*|video\/.*|application\/pdf)$/ }),
         ],
       })
     )
