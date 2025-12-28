@@ -67,7 +67,7 @@ export class UploadsService implements OnModuleInit {
       await this.storage.createBucket(this.bucketName, {
         location,
         ...(projectId && { projectId }),
-        publicAccessPrevention: 'inherited',
+        publicAccessPrevention: 'unspecified',
         uniformBucketLevelAccess: { enabled: true },
       })
 
@@ -94,18 +94,23 @@ export class UploadsService implements OnModuleInit {
       const [policy] = await this.bucket.iam.getPolicy()
       const isPublic = policy.bindings.some(
         binding =>
-          binding.role === 'roles/storage.objectViewer' && binding.members.includes('allUsers')
+          binding.role === 'roles/storage.objectViewer' &&
+          binding.members.includes('allUsers')
       )
 
       if (!isPublic) {
-        this.logger.warn(`Bucket ${this.bucketName} is not publicly readable. Making it public...`)
+        this.logger.warn(
+          `Bucket ${this.bucketName} is not publicly readable. Making it public...`
+        )
         // Add allUsers as object viewer
         const currentPolicy = policy
         const existingBinding = currentPolicy.bindings.find(
           b => b.role === 'roles/storage.objectViewer'
         )
         if (existingBinding) {
-          existingBinding.members.push('allUsers')
+          if (!existingBinding.members.includes('allUsers')) {
+            existingBinding.members.push('allUsers')
+          }
         } else {
           currentPolicy.bindings.push({
             role: 'roles/storage.objectViewer',
@@ -119,7 +124,10 @@ export class UploadsService implements OnModuleInit {
         this.logger.log(`Bucket ${this.bucketName} is publicly readable`)
       }
     } catch (error) {
-      this.logger.error(`Failed to verify/set public access for bucket ${this.bucketName}`, error)
+      this.logger.error(
+        `Failed to verify/set public access for bucket ${this.bucketName}`,
+        error
+      )
       // Don't throw - warn but continue
     }
   }
