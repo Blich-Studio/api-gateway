@@ -19,6 +19,7 @@ export const ArticleResponseSchema = z.object({
   coverImageUrl: z.string().nullable(),
   author: AuthorSchema,
   status: z.enum(['draft', 'published', 'archived']),
+  featured: z.boolean(),
   tags: z.array(TagResponseSchema),
   likesCount: z.number(),
   viewsCount: z.number(),
@@ -47,6 +48,7 @@ export const CreateArticleSchema = z.object({
   content: z.string().min(1, 'Content is required'),
   coverImageUrl: z.string().url().optional(),
   status: z.enum(['draft', 'published', 'archived']).default('draft'),
+  featured: z.boolean().default(false),
   tags: z.array(z.string()).default([]), // Tag names
 })
 
