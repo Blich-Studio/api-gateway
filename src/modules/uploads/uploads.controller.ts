@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger'
@@ -36,6 +37,8 @@ interface MulterFile {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UploadsController {
+  private readonly logger = new Logger(UploadsController.name)
+
   constructor(private readonly uploadsService: UploadsService) {}
 
   @Post('signed-url')
@@ -63,14 +66,40 @@ export class UploadsController {
     @CurrentUser() user: AuthUser
   ) {
     const maxSize = 10 * 1024 * 1024 // 10MB
+
+    // Allow runtime check for file presence even if types indicate it's defined
     // Allow runtime check for file presence even if types indicate it's defined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!file?.buffer) {
+      /* eslint-disable @typescript-eslint/no-unnecessary-condition */
+      this.logger.error('No file buffer present on uploaded file', {
+        originalname: file?.originalname,
+        mimetype: file?.mimetype,
+        // size may be available for disk storage cases
+        size: (file as unknown as { size?: number })?.size,
+      })
+      /* eslint-enable @typescript-eslint/no-unnecessary-condition */
+
       throw new BadRequestException('No file uploaded')
     }
+
+    // Ensure we actually have a Buffer (memory storage)
+    if (!Buffer.isBuffer(file.buffer)) {
+      this.logger.error('Uploaded file buffer is not a Buffer', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        bufferType: typeof file.buffer,
+      })
+      throw new BadRequestException('Invalid file upload (buffer missing)')
+    }
+
     if (file.buffer.length > maxSize) {
       throw new BadRequestException('File too large')
     }
+
+    this.logger.log(
+      `Uploading file: ${file.originalname}, mimetype=${file.mimetype}, size=${file.buffer.length}`
+    )
 
     const mimetype = file.mimetype || ''
     const allowed = /^(?:image\/.*|video\/.*|application\/pdf)$/
