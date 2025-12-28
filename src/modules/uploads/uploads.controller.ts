@@ -67,17 +67,22 @@ export class UploadsController {
   ) {
     const maxSize = 10 * 1024 * 1024 // 10MB
 
-    // Allow runtime check for file presence even if types indicate it's defined
+    // Defensive runtime check: although the parameter type is `MulterFile | undefined` and in
+    // normal operation the `FileInterceptor` (with memory storage) provides a `buffer`, there are real
+    // cases where `file` may be missing or may not include a `buffer` (e.g. disk storage, misconfigured
+    // middleware, test stubs, or direct requests bypassing the interceptor). We perform an explicit
+    // runtime check to avoid uploading invalid/corrupted data and to provide a clear log for debugging.
+    const reportedOriginalName = file?.originalname
+    const reportedMime = file?.mimetype
+    const reportedSize =
+      file && typeof (file as unknown as { size?: number }).size === 'number'
+        ? (file as unknown as { size?: number }).size
+        : undefined
+
     if (!file?.buffer) {
-      this.logger.error('No file buffer present on uploaded file', {
-        originalname: file ? file.originalname : undefined,
-        mimetype: file ? file.mimetype : undefined,
-        // size may be available for disk storage cases
-        size:
-          file && typeof (file as unknown as { size?: number }).size === 'number'
-            ? (file as unknown as { size?: number }).size
-            : undefined,
-      })
+      this.logger.error(
+        `No file buffer present on uploaded file - originalname=${reportedOriginalName ?? 'unknown'} mimetype=${reportedMime ?? 'unknown'} size=${reportedSize ?? 'unknown'}`
+      )
 
       throw new BadRequestException('No file uploaded')
     }
