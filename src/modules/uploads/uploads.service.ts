@@ -67,7 +67,7 @@ export class UploadsService implements OnModuleInit {
       await this.storage.createBucket(this.bucketName, {
         location,
         ...(projectId && { projectId }),
-        publicAccessPrevention: 'inherited',
+        publicAccessPrevention: 'unspecified',
         uniformBucketLevelAccess: { enabled: true },
       })
 
@@ -105,7 +105,9 @@ export class UploadsService implements OnModuleInit {
           b => b.role === 'roles/storage.objectViewer'
         )
         if (existingBinding) {
-          existingBinding.members.push('allUsers')
+          if (!existingBinding.members.includes('allUsers')) {
+            existingBinding.members.push('allUsers')
+          }
         } else {
           currentPolicy.bindings.push({
             role: 'roles/storage.objectViewer',
