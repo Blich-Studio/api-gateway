@@ -87,6 +87,7 @@ export class UploadsController {
 
     // Ensure we actually have a Buffer (memory storage)
     if (!Buffer.isBuffer(file.buffer)) {
+      // FIXME: DEBUG - remove this log after we confirm uploads are valid
       this.logger.error('Uploaded file buffer is not a Buffer', {
         originalname: file.originalname,
         mimetype: file.mimetype,
@@ -99,6 +100,7 @@ export class UploadsController {
       throw new BadRequestException('File too large')
     }
 
+    // FIXME: DEBUG - remove this log after validating uploads
     this.logger.log(
       `Uploading file: ${file.originalname}, mimetype=${file.mimetype}, size=${file.buffer.length}`
     )
