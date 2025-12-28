@@ -61,24 +61,23 @@ export class UploadsController {
   @ApiResponse({ status: 403, description: 'Forbidden - writer/admin only' })
   @ApiResponse({ status: 413, description: 'File too large' })
   async uploadFile(
-    @UploadedFile() file: MulterFile,
+    @UploadedFile() file: MulterFile | undefined,
     @Query('folder') folder = 'general',
     @CurrentUser() user: AuthUser
   ) {
     const maxSize = 10 * 1024 * 1024 // 10MB
 
     // Allow runtime check for file presence even if types indicate it's defined
-    // Allow runtime check for file presence even if types indicate it's defined
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!file?.buffer) {
-      /* eslint-disable @typescript-eslint/no-unnecessary-condition */
       this.logger.error('No file buffer present on uploaded file', {
-        originalname: file?.originalname,
-        mimetype: file?.mimetype,
+        originalname: file ? file.originalname : undefined,
+        mimetype: file ? file.mimetype : undefined,
         // size may be available for disk storage cases
-        size: (file as unknown as { size?: number })?.size,
+        size:
+          file && typeof (file as unknown as { size?: number }).size === 'number'
+            ? (file as unknown as { size?: number }).size
+            : undefined,
       })
-      /* eslint-enable @typescript-eslint/no-unnecessary-condition */
 
       throw new BadRequestException('No file uploaded')
     }
