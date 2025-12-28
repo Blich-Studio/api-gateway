@@ -50,6 +50,8 @@ export class UploadsService implements OnModuleInit {
         await this.createBucket()
       } else {
         this.logger.log(`Connected to GCS bucket: ${this.bucketName}`)
+        // Verify bucket is publicly readable
+        await this.verifyPublicAccess()
       }
     } catch (error) {
       this.logger.error('Failed to initialize GCS storage', error)
@@ -70,12 +72,55 @@ export class UploadsService implements OnModuleInit {
       })
 
       // Make bucket publicly readable for serving images
-      await this.bucket.makePublic()
+      // This sets allUsers as Reader role
+      await this.bucket.iam.setPolicy({
+        bindings: [
+          {
+            role: 'roles/storage.objectViewer',
+            members: ['allUsers'],
+          },
+        ],
+      })
 
-      this.logger.log(`Created bucket ${this.bucketName}`)
+      this.logger.log(`Created bucket ${this.bucketName} and made it public`)
     } catch (error) {
       this.logger.error(`Failed to create bucket ${this.bucketName}`, error)
       throw error
+    }
+  }
+
+  private async verifyPublicAccess() {
+    try {
+      const [policy] = await this.bucket.iam.getPolicy()
+      const isPublic = policy.bindings.some(
+        binding =>
+          binding.role === 'roles/storage.objectViewer' && binding.members.includes('allUsers')
+      )
+
+      if (!isPublic) {
+        this.logger.warn(`Bucket ${this.bucketName} is not publicly readable. Making it public...`)
+        // Add allUsers as object viewer
+        const currentPolicy = policy
+        const existingBinding = currentPolicy.bindings.find(
+          b => b.role === 'roles/storage.objectViewer'
+        )
+        if (existingBinding) {
+          existingBinding.members.push('allUsers')
+        } else {
+          currentPolicy.bindings.push({
+            role: 'roles/storage.objectViewer',
+            members: ['allUsers'],
+          })
+        }
+
+        await this.bucket.iam.setPolicy(currentPolicy)
+        this.logger.log(`Made bucket ${this.bucketName} publicly readable`)
+      } else {
+        this.logger.log(`Bucket ${this.bucketName} is publicly readable`)
+      }
+    } catch (error) {
+      this.logger.error(`Failed to verify/set public access for bucket ${this.bucketName}`, error)
+      // Don't throw - warn but continue
     }
   }
 
@@ -136,15 +181,20 @@ export class UploadsService implements OnModuleInit {
 
     const file = this.bucket.file(path)
 
-    await file.save(fileBuffer, {
-      metadata: {
-        contentType,
+    try {
+      await file.save(fileBuffer, {
         metadata: {
-          uploadedBy: userId,
-          originalFilename,
+          contentType,
+          metadata: {
+            uploadedBy: userId,
+            originalFilename,
+          },
         },
-      },
-    })
+      })
+    } catch (error) {
+      this.logger.error(`Failed to upload file: ${path}`, error)
+      throw error
+    }
 
     const publicUrl = `${this.publicUrl}/${path}`
 
