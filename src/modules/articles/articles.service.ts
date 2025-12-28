@@ -27,6 +27,7 @@ interface ArticleRow {
   author_display_name: string
   author_avatar_url: string | null
   status: 'draft' | 'published' | 'archived'
+  featured: boolean
   likes_count: number
   views_count: number
   published_at: Date | null
@@ -106,6 +107,7 @@ export class ArticlesService {
         avatarUrl: row.author_avatar_url,
       },
       status: row.status,
+      featured: row.featured,
       tags,
       likesCount: row.likes_count,
       viewsCount: row.views_count,
@@ -284,8 +286,8 @@ export class ArticlesService {
     const publishedAt = dto.status === 'published' ? new Date() : null
 
     const result = await this.db.query(
-      `INSERT INTO articles (title, slug, perex, content, cover_image_url, author_id, status, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO articles (title, slug, perex, content, cover_image_url, author_id, status, featured, published_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         dto.title,
@@ -295,6 +297,7 @@ export class ArticlesService {
         dto.coverImageUrl ?? null,
         authorId,
         dto.status,
+        dto.featured,
         publishedAt,
       ]
     )
@@ -377,6 +380,11 @@ export class ArticlesService {
         updates.push(`published_at = $${paramIndex++}`)
         values.push(new Date())
       }
+    }
+
+    if (dto.featured !== undefined) {
+      updates.push(`featured = $${paramIndex++}`)
+      values.push(dto.featured)
     }
 
     if (updates.length > 0) {
