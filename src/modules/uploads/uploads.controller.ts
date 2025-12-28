@@ -30,6 +30,8 @@ interface MulterFile {
   buffer: Buffer
   originalname: string
   mimetype: string
+  // Optional 'size' is provided by multer (bytes) when using disk or memory storage
+  size?: number
 }
 
 @ApiTags('uploads')
@@ -74,14 +76,10 @@ export class UploadsController {
     // runtime check to avoid uploading invalid/corrupted data and to provide a clear log for debugging.
     const reportedOriginalName = file?.originalname
     const reportedMime = file?.mimetype
-    const reportedSize =
-      file && typeof (file as unknown as { size?: number }).size === 'number'
-        ? (file as unknown as { size?: number }).size
-        : undefined
 
     if (!file?.buffer) {
       this.logger.error(
-        `No file buffer present on uploaded file - originalname=${reportedOriginalName ?? 'unknown'} mimetype=${reportedMime ?? 'unknown'} size=${reportedSize ?? 'unknown'}`
+        `No file buffer present on uploaded file - originalname=${reportedOriginalName ?? 'unknown'} mimetype=${reportedMime ?? 'unknown'} size=${file?.size ?? 'unknown'}`
       )
 
       throw new BadRequestException('No file uploaded')
