@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger'
@@ -29,6 +30,8 @@ interface MulterFile {
   buffer: Buffer
   originalname: string
   mimetype: string
+  // Optional 'size' is provided by multer (bytes) when using disk or memory storage
+  size?: number
 }
 
 @ApiTags('uploads')
@@ -36,6 +39,8 @@ interface MulterFile {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UploadsController {
+  private readonly logger = new Logger(UploadsController.name)
+
   constructor(private readonly uploadsService: UploadsService) {}
 
   @Post('signed-url')
@@ -58,19 +63,46 @@ export class UploadsController {
   @ApiResponse({ status: 403, description: 'Forbidden - writer/admin only' })
   @ApiResponse({ status: 413, description: 'File too large' })
   async uploadFile(
-    @UploadedFile() file: MulterFile,
+    @UploadedFile() file: MulterFile | undefined,
     @Query('folder') folder = 'general',
     @CurrentUser() user: AuthUser
   ) {
     const maxSize = 10 * 1024 * 1024 // 10MB
-    // Allow runtime check for file presence even if types indicate it's defined
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
+    // Defensive runtime check: although the parameter type is `MulterFile | undefined` and in
+    // normal operation the `FileInterceptor` (with memory storage) provides a `buffer`, there are real
+    // cases where `file` may be missing or may not include a `buffer` (e.g. disk storage, misconfigured
+    // middleware, test stubs, or direct requests bypassing the interceptor). We perform an explicit
+    // runtime check to avoid uploading invalid/corrupted data and to provide a clear log for debugging.
+    const reportedOriginalName = file?.originalname
+    const reportedMime = file?.mimetype
+
     if (!file?.buffer) {
+      this.logger.error(
+        `No file buffer present on uploaded file - originalname=${reportedOriginalName ?? 'unknown'} mimetype=${reportedMime ?? 'unknown'} size=${file?.size ?? 'unknown'}`
+      )
+
       throw new BadRequestException('No file uploaded')
     }
+
+    // Ensure we actually have a Buffer (memory storage)
+    if (!Buffer.isBuffer(file.buffer)) {
+      this.logger.error('Uploaded file buffer is not a Buffer', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        bufferType: typeof file.buffer,
+      })
+      throw new BadRequestException('Invalid file upload (buffer missing)')
+    }
+
     if (file.buffer.length > maxSize) {
       throw new BadRequestException('File too large')
     }
+
+    // FIXME: DEBUG - remove this log after validating uploads
+    this.logger.log(
+      `Uploading file: ${file.originalname}, mimetype=${file.mimetype}, size=${file.buffer.length}`
+    )
 
     const mimetype = file.mimetype || ''
     const allowed = /^(?:image\/.*|video\/.*|application\/pdf)$/

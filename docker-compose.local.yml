@@ -1,0 +1,110 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: blich-postgres-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-blich_studio}
+    volumes:
+      - postgres-local-data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - blich-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-blich_studio}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  fake-gcs:
+    image: fsouza/fake-gcs-server:latest
+    container_name: blich-fake-gcs
+    command: ["-scheme", "http", "-port", "4443", "-external-url", "http://fake-gcs:4443", "-backend", "memory"]
+    ports:
+      - "4443:4443"
+    volumes:
+      - fake-gcs-data:/data
+    networks:
+      - blich-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        NPM_TOKEN: ${NPM_TOKEN}
+    container_name: blich-api-gateway-local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      # DB
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-blich_studio}
+      POSTGRES_SSL: 'false'
+      # GCS emulator
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-blich-studio-uploads}
+      GCS_PUBLIC_URL: ${GCS_PUBLIC_URL:-http://fake-gcs:4443}
+      GCS_API_ENDPOINT: ${GCS_API_ENDPOINT:-http://fake-gcs:4443}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-local}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - blich-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "rm -rf dist && node --inspect=0.0.0.0:9229 --require ts-node/register node_modules/.bin/nest start --watch"
+
+  blich-cms:
+    build:
+      context: ../blich-cms
+      dockerfile: Dockerfile
+      args:
+        NPM_TOKEN: ${NPM_TOKEN}
+    container_name: blich-cms-local
+    ports:
+      - "3001:3000"
+    environment:
+      NUXT_PUBLIC_API_URL: ${NUXT_PUBLIC_API_URL:-http://api-gateway:3000}
+    volumes:
+      - ../blich-cms:/app
+      - /app/node_modules
+    networks:
+      - blich-network
+    command: sh -c "bun run dev --port 3000 --host 0.0.0.0"
+    depends_on:
+      - api-gateway
+
+  jwks-service:
+    build:
+      context: ../jwks-service
+      dockerfile: Dockerfile
+      args:
+        NPM_TOKEN: ${NPM_TOKEN}
+    container_name: blich-jwks-local
+    ports:
+      - "3100:3100"
+    networks:
+      - blich-network
+
+networks:
+  blich-network:
+    driver: bridge
+
+volumes:
+  postgres-local-data:
+    driver: local
+  fake-gcs-data:
+    driver: local
