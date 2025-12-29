@@ -35,10 +35,21 @@ export class UploadsService implements OnModuleInit {
       // For local development, set GOOGLE_APPLICATION_CREDENTIALS env var
       const projectId = this.configService.get<string>('GCP_PROJECT_ID')
       const keyFile = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS')
+      const apiEndpoint =
+        this.configService.get<string>('GCS_API_ENDPOINT') ??
+        this.configService.get<string>('GCS_EMULATOR_HOST')
 
       const storageConfig: ConstructorParameters<typeof Storage>[0] = {}
       if (projectId) storageConfig.projectId = projectId
       if (keyFile) storageConfig.keyFilename = keyFile
+
+      // If an emulator or custom API endpoint is provided, set apiEndpoint so the client talks to it
+      if (apiEndpoint) {
+        storageConfig.apiEndpoint = apiEndpoint
+        // Fake GCS servers often run over plain HTTP and do not use TLS
+        // The client will infer the scheme from the apiEndpoint
+        this.logger.log(`Using custom GCS API endpoint: ${apiEndpoint}`)
+      }
 
       this.storage = new Storage(storageConfig)
       this.bucket = this.storage.bucket(this.bucketName)
