@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -25,18 +23,13 @@ services:
   fake-gcs:
     image: fsouza/fake-gcs-server:latest
     container_name: blich-fake-gcs
-    command: ["-scheme", "http", "-port", "4443", "-public", "-backend", "memory"]
+    command: ["-scheme", "http", "-port", "4443", "-external-url", "http://fake-gcs:4443", "-backend", "memory"]
     ports:
       - "4443:4443"
     volumes:
       - fake-gcs-data:/data
     networks:
       - blich-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:4443/_/health || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   api-gateway:
     build:
@@ -71,8 +64,6 @@ services:
       - blich-network
     depends_on:
       postgres:
-        condition: service_healthy
-      fake-gcs:
         condition: service_healthy
     command: sh -c "rm -rf dist && node --inspect=0.0.0.0:9229 --require ts-node/register node_modules/.bin/nest start --watch"
 

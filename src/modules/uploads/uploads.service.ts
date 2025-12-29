@@ -192,19 +192,6 @@ export class UploadsService implements OnModuleInit {
     const uniqueFilename = `${randomUUID()}.${extension}`
     const path = `${folder}/${uniqueFilename}`
 
-    // FIXME: DEBUG - remove these logs once buffer corruption is resolved
-    // Debug logs for buffer
-    this.logger.log(
-      `uploadFile: typeof fileBuffer = ${typeof fileBuffer}, Buffer.isBuffer = ${Buffer.isBuffer(
-        fileBuffer
-      )}, length = ${fileBuffer.length}`
-    )
-
-    // FIXME: DEBUG - remove this preview log after debugging
-    // Log first few bytes as hex for inspection
-    const preview = fileBuffer.slice(0, 16).toString('hex')
-    this.logger.log(`uploadFile: first 16 bytes (hex): ${preview}`)
-
     const file = this.bucket.file(path)
 
     try {

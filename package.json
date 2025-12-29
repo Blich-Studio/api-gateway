@@ -19,6 +19,7 @@
     "test:cov": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
+    "test:upload-local": "ts-node -r tsconfig-paths/register src/scripts/upload-test.ts",
     "create-admin": "ts-node -r tsconfig-paths/register src/create-admin.ts",
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",

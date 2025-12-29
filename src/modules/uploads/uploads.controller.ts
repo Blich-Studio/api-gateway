@@ -87,7 +87,6 @@ export class UploadsController {
 
     // Ensure we actually have a Buffer (memory storage)
     if (!Buffer.isBuffer(file.buffer)) {
-      // FIXME: DEBUG - remove this log after we confirm uploads are valid
       this.logger.error('Uploaded file buffer is not a Buffer', {
         originalname: file.originalname,
         mimetype: file.mimetype,
