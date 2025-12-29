@@ -14,7 +14,9 @@ async function main() {
   // Ensure bucket exists (fake-gcs will create bucket on object write if not existing)
   const filename = `test/${randomUUID()}.png`
   // 1x1 transparent PNG
-  const base64Png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAQJ0p4QAAAAASUVORK5CYII='
+  const base64Png =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAQJ0p4QAAAAASUVORK5CYII='
+
   const buffer = Buffer.from(base64Png, 'base64')
 
   const bucket = storage.bucket(bucketName)
@@ -45,7 +47,7 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error('Upload test failed:', err)
   process.exit(1)
 })
