@@ -22,10 +22,9 @@ export class UploadsService implements OnModuleInit {
 
   constructor(private readonly configService: ConfigService) {
     this.bucketName = this.configService.get<string>('GCS_BUCKET_NAME', 'blich-studio-uploads')
-    this.publicUrl = this.configService.get<string>(
-      'GCS_PUBLIC_URL',
-      `https://storage.googleapis.com/${this.bucketName}`
-    )
+    const configuredPublicUrl = this.configService.get<string>('GCS_PUBLIC_URL')
+    // Use configured URL if non-empty, otherwise default to GCS public URL
+    this.publicUrl = configuredPublicUrl ?? `https://storage.googleapis.com/${this.bucketName}`
   }
 
   async onModuleInit() {

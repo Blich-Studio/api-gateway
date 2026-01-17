@@ -158,7 +158,7 @@ export class ActivityService {
   /**
    * Get activity statistics for the dashboard
    */
-  async getStats(): Promise<{ data: ActivityStats }> {
+  async getStats(): Promise<ActivityStats> {
     const statsQuery = `
       SELECT
         (SELECT COUNT(*) FROM comments WHERE status != 'spam') as total_comments,
@@ -174,15 +174,13 @@ export class ActivityService {
     const row = result.rows[0] as Record<string, string | number>
 
     return {
-      data: {
-        totalComments: Number(row.total_comments || 0),
-        pendingComments: Number(row.pending_comments || 0),
-        totalArticles: Number(row.total_articles || 0),
-        publishedArticles: Number(row.published_articles || 0),
-        totalUsers: Number(row.total_users || 0),
-        newUsersToday: Number(row.new_users_today || 0),
-        totalLikes: Number(row.total_likes || 0),
-      },
+      totalComments: Number(row.total_comments || 0),
+      pendingComments: Number(row.pending_comments || 0),
+      totalArticles: Number(row.total_articles || 0),
+      publishedArticles: Number(row.published_articles || 0),
+      totalUsers: Number(row.total_users || 0),
+      newUsersToday: Number(row.new_users_today || 0),
+      totalLikes: Number(row.total_likes || 0),
     }
   }
 
@@ -215,21 +213,19 @@ export class ActivityService {
 
     const result = await this.db.query(query, [limit])
 
-    return {
-      data: result.rows.map((row: Record<string, unknown>) => ({
-        id: row.id,
-        content: row.content,
-        status: row.status,
-        createdAt: (row.created_at as Date).toISOString(),
-        user: {
-          id: row.user_id,
-          displayName: row.user_name,
-          avatarUrl: row.user_avatar,
-        },
-        targetTitle: row.target_title,
-        targetType: row.target_type,
-      })),
-    }
+    return result.rows.map((row: Record<string, unknown>) => ({
+      id: row.id,
+      content: row.content,
+      status: row.status,
+      createdAt: (row.created_at as Date).toISOString(),
+      user: {
+        id: row.user_id,
+        displayName: row.user_name,
+        avatarUrl: row.user_avatar,
+      },
+      targetTitle: row.target_title,
+      targetType: row.target_type,
+    }))
   }
 
   private mapToResponse(row: ActivityRow): ActivityResponse {
