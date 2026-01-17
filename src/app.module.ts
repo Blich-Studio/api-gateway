@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
+import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
@@ -13,7 +13,6 @@ import { LikesModule } from './modules/likes/likes.module'
 import { UsersModule } from './modules/users/users.module'
 import { UploadsModule } from './modules/uploads/uploads.module'
 import { ActivityModule } from './modules/activity/activity.module'
-import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 @Module({
   imports: [
@@ -42,10 +41,6 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: ResponseInterceptor,
     },
   ],
 })

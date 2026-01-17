@@ -128,7 +128,7 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`)
     }
 
-    return { data: this.mapUserRow(result.rows[0] as unknown as UserRow) }
+    return this.mapUserRow(result.rows[0] as unknown as UserRow)
   }
 
   /**
@@ -154,7 +154,7 @@ export class UsersService {
 
     this.logger.log(`Admin ${adminUserId} changed user ${id} role to ${dto.role}`)
 
-    return { data: this.mapUserRow(result.rows[0] as unknown as UserRow) }
+    return this.mapUserRow(result.rows[0] as unknown as UserRow)
   }
 
   /**
@@ -175,7 +175,7 @@ export class UsersService {
 
     this.logger.log(`Admin changed user ${id} verification to ${dto.isVerified}`)
 
-    return { data: this.mapUserRow(result.rows[0] as unknown as UserRow) }
+    return this.mapUserRow(result.rows[0] as unknown as UserRow)
   }
 
   /**
