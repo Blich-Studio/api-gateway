@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { PassportStrategy } from '@nestjs/passport'
 import { Strategy } from 'passport-custom'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import type { Request } from 'express'
+import { AppConfigService } from '../../../common/config'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -11,12 +11,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly issuer: string
   private readonly audience: string
 
-  constructor(configService: ConfigService) {
+  constructor(appConfig: AppConfigService) {
     super()
 
-    const jwksUrl = configService.get<string>('JWKS_URL')
-    const issuer = configService.get<string>('JWT_ISSUER')
-    const audience = configService.get<string>('JWT_AUDIENCE')
+    const jwksUrl = appConfig.jwksUrl
+    const issuer = appConfig.jwtIssuer
+    const audience = appConfig.jwtAudience
 
     if (!jwksUrl || !issuer || !audience) {
       throw new Error('Missing required JWT configuration')

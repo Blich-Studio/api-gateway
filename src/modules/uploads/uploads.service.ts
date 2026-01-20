@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { Storage, Bucket } from '@google-cloud/storage'
 import { randomUUID } from 'node:crypto'
+import { AppConfigService } from '../../common/config'
 import type { SignedUrlRequest, UploadResponse, SignedUrlResponse } from './dto/upload.dto'
 
 export interface FileMetadata {
@@ -20,11 +20,9 @@ export class UploadsService implements OnModuleInit {
   private bucketName: string
   private publicUrl: string
 
-  constructor(private readonly configService: ConfigService) {
-    this.bucketName = this.configService.get<string>('GCS_BUCKET_NAME', 'blich-studio-uploads')
-    const configuredPublicUrl = this.configService.get<string>('GCS_PUBLIC_URL')
-    // Use configured URL if non-empty, otherwise default to GCS public URL
-    this.publicUrl = configuredPublicUrl ?? `https://storage.googleapis.com/${this.bucketName}`
+  constructor(private readonly appConfig: AppConfigService) {
+    this.bucketName = this.appConfig.gcsBucketName
+    this.publicUrl = this.appConfig.gcsPublicUrl
   }
 
   async onModuleInit() {
@@ -32,11 +30,9 @@ export class UploadsService implements OnModuleInit {
       // Initialize Google Cloud Storage
       // In production, uses Application Default Credentials (ADC)
       // For local development, set GOOGLE_APPLICATION_CREDENTIALS env var
-      const projectId = this.configService.get<string>('GCP_PROJECT_ID')
-      const keyFile = this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS')
-      const apiEndpoint =
-        this.configService.get<string>('GCS_API_ENDPOINT') ??
-        this.configService.get<string>('GCS_EMULATOR_HOST')
+      const projectId = this.appConfig.gcpProjectId
+      const keyFile = this.appConfig.googleApplicationCredentials
+      const apiEndpoint = this.appConfig.gcsApiEndpoint
 
       const storageConfig: ConstructorParameters<typeof Storage>[0] = {}
       if (projectId) storageConfig.projectId = projectId
@@ -71,8 +67,8 @@ export class UploadsService implements OnModuleInit {
 
   private async createBucket() {
     try {
-      const projectId = this.configService.get<string>('GCP_PROJECT_ID')
-      const location = this.configService.get<string>('GCS_BUCKET_LOCATION', 'US')
+      const projectId = this.appConfig.gcpProjectId
+      const location = this.appConfig.gcsBucketLocation
 
       await this.storage.createBucket(this.bucketName, {
         location,

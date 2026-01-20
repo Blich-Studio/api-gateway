@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
 import { createHash, randomUUID } from 'node:crypto'
+import { AppConfigService } from '../../common/config'
 import { POSTGRES_CLIENT } from '../database/postgres.module'
 import { EMAIL_SERVICE } from '../email/email.service'
 import {
@@ -39,7 +39,7 @@ export class UserAuthService implements OnModuleInit {
   constructor(
     @Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient,
     @Inject(EMAIL_SERVICE) private readonly emailService: EmailService,
-    private readonly configService: ConfigService
+    private readonly appConfig: AppConfigService
   ) {}
 
   async onModuleInit() {
@@ -321,7 +321,7 @@ export class UserAuthService implements OnModuleInit {
     // Tokens don't need bcrypt's intentional slowness - only passwords do
     const tokenHash = createHash('sha256').update(token).digest('hex')
     const tokenPrefix = token.substring(0, this.TOKEN_PREFIX_LENGTH) // Store prefix for efficient lookup
-    const expiryHours = this.configService.get<number>('VERIFICATION_TOKEN_EXPIRY_HOURS', 24)
+    const expiryHours = this.appConfig.verificationTokenExpiryHours
     const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000)
 
     try {
@@ -344,8 +344,7 @@ export class UserAuthService implements OnModuleInit {
   }
 
   private async hashPassword(password: string): Promise<string> {
-    const saltRounds = parseInt(this.configService.get<string>('BCRYPT_SALT_ROUNDS', '12'), 10)
-    return bcrypt.hash(password, saltRounds)
+    return bcrypt.hash(password, this.appConfig.bcryptSaltRounds)
   }
 
   /**

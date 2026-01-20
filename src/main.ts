@@ -1,22 +1,20 @@
 import { NestFactory } from '@nestjs/core'
-import { AppModule } from './app.module'
-import { ZodValidationPipe } from 'nestjs-zod'
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { Logger } from '@nestjs/common'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { ZodValidationPipe } from 'nestjs-zod'
+import { AppModule } from './app.module'
+import { AppConfigService } from './common/config'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap')
   const app = await NestFactory.create(AppModule)
 
-  // Enable CORS with environment-based configuration
-  const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : process.env.NODE_ENV === 'production'
-      ? ['https://blichstudio.com', 'https://www.blichstudio.com']
-      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:4200']
+  // Get the config service from the DI container
+  const appConfig = app.get(AppConfigService)
 
+  // Enable CORS with environment-based configuration
   app.enableCors({
-    origin: allowedOrigins,
+    origin: appConfig.allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -37,9 +35,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup('api', app, document)
 
-  const port = process.env.PORT ?? 3000
+  const port = appConfig.port
   await app.listen(port, '0.0.0.0')
-  logger.log(`🚀 Application running on http://0.0.0.0:${port}`)
-  logger.log(`📚 API documentation available at http://0.0.0.0:${port}/api`)
+  logger.log(`Application running on http://0.0.0.0:${port}`)
+  logger.log(`API documentation available at http://0.0.0.0:${port}/api`)
 }
 void bootstrap()

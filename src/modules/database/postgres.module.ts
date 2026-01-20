@@ -1,6 +1,6 @@
 import { Inject, Logger, Module, type OnModuleDestroy } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Pool, type QueryResult } from 'pg'
+import { AppConfigModule, AppConfigService } from '../../common/config'
 
 export const POSTGRES_CLIENT = 'POSTGRES_CLIENT'
 
@@ -12,47 +12,34 @@ export interface PostgresClient {
   end(): Promise<void>
 }
 
-/**
- * Parse boolean value from string configuration
- * Handles: 'true', '1', 'yes' (case-insensitive)
- */
-function parseBoolean(value: string | undefined, defaultValue = false): boolean {
-  if (!value) return defaultValue
-  const normalized = value.toLowerCase().trim()
-  return normalized === 'true' || normalized === '1' || normalized === 'yes'
-}
-
 @Module({
-  imports: [ConfigModule],
+  imports: [AppConfigModule],
   providers: [
     {
       provide: POSTGRES_CLIENT,
-      useFactory: async (configService: ConfigService) => {
+      useFactory: async (appConfig: AppConfigService) => {
         const logger = new Logger('PostgresModule')
-        const sslEnabled = parseBoolean(configService.get<string>('POSTGRES_SSL'))
-        const sslRejectUnauthorized = configService.get<string>('POSTGRES_SSL_REJECT_UNAUTHORIZED')
-        const sslCa = configService.get<string>('POSTGRES_SSL_CA')
 
         // Warn if SSL configs are provided but SSL is not enabled
-        if (!sslEnabled && (sslRejectUnauthorized || sslCa)) {
+        if (!appConfig.postgresSslEnabled && appConfig.postgresSslCa) {
           logger.warn(
-            'POSTGRES_SSL_REJECT_UNAUTHORIZED or POSTGRES_SSL_CA is set but POSTGRES_SSL is not enabled. SSL settings will be ignored.'
+            'POSTGRES_SSL_CA is set but POSTGRES_SSL is not enabled. SSL settings will be ignored.'
           )
         }
 
         const pool = new Pool({
-          host: configService.getOrThrow<string>('POSTGRES_HOST'),
-          port: configService.getOrThrow<number>('POSTGRES_PORT'),
-          user: configService.getOrThrow<string>('POSTGRES_USER'),
-          password: configService.getOrThrow<string>('POSTGRES_PASSWORD'),
-          database: configService.getOrThrow<string>('POSTGRES_DB'),
-          max: configService.get<number>('POSTGRES_POOL_MAX', 20),
-          idleTimeoutMillis: configService.get<number>('POSTGRES_IDLE_TIMEOUT', 30000),
-          connectionTimeoutMillis: configService.get<number>('POSTGRES_CONNECTION_TIMEOUT', 2000),
-          ssl: sslEnabled
+          host: appConfig.postgresHost,
+          port: appConfig.postgresPort,
+          user: appConfig.postgresUser,
+          password: appConfig.postgresPassword,
+          database: appConfig.postgresDatabase,
+          max: appConfig.postgresPoolMax,
+          idleTimeoutMillis: appConfig.postgresIdleTimeout,
+          connectionTimeoutMillis: appConfig.postgresConnectionTimeout,
+          ssl: appConfig.postgresSslEnabled
             ? {
-                rejectUnauthorized: parseBoolean(sslRejectUnauthorized, true),
-                ...(sslCa ? { ca: sslCa } : {}),
+                rejectUnauthorized: appConfig.postgresSslRejectUnauthorized,
+                ...(appConfig.postgresSslCa ? { ca: appConfig.postgresSslCa } : {}),
               }
             : false,
         })
@@ -74,7 +61,7 @@ function parseBoolean(value: string | undefined, defaultValue = false): boolean 
 
         return pool
       },
-      inject: [ConfigService],
+      inject: [AppConfigService],
     },
   ],
   exports: [POSTGRES_CLIENT],
