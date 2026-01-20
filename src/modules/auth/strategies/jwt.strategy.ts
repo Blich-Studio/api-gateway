@@ -14,19 +14,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(appConfig: AppConfigService) {
     super()
 
-    const jwksUrl = appConfig.jwksUrl
-    const issuer = appConfig.jwtIssuer
-    const audience = appConfig.jwtAudience
+    const { jwksUrl, jwtIssuer, jwtAudience } = appConfig
 
-    if (!jwksUrl || !issuer || !audience) {
+    if (!jwksUrl || !jwtIssuer || !jwtAudience) {
       throw new Error('Missing required JWT configuration')
     }
 
     // Create and cache JWKS instance for token verification
     // This avoids fetching JWKS on every request
     this.jwks = createRemoteJWKSet(new URL(jwksUrl))
-    this.issuer = issuer
-    this.audience = audience
+    this.issuer = jwtIssuer
+    this.audience = jwtAudience
   }
 
   async validate(req: Request): Promise<unknown> {

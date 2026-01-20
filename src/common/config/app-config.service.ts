@@ -40,7 +40,7 @@ export class AppConfigService {
   get allowedOrigins(): string[] {
     const origins = this.configService.get<string>('ALLOWED_ORIGINS')
     if (origins) {
-      return origins.split(',').map((o) => o.trim())
+      return origins.split(',').map(o => o.trim())
     }
     return this.isProduction
       ? ['https://cms.blichstudio.com', 'https://blichstudio.com', 'https://www.blichstudio.com']
@@ -139,13 +139,13 @@ export class AppConfigService {
 
   get gcsPublicUrl(): string {
     const configuredUrl = this.configService.get<string>('GCS_PUBLIC_URL')
-    return configuredUrl || `https://storage.googleapis.com/${this.gcsBucketName}`
+    return configuredUrl ?? `https://storage.googleapis.com/${this.gcsBucketName}`
   }
 
   get gcsApiEndpoint(): string | undefined {
     return (
-      this.configService.get<string>('GCS_API_ENDPOINT') ||
-      this.configService.get<string>('GCS_EMULATOR_HOST') ||
+      this.configService.get<string>('GCS_API_ENDPOINT') ??
+      this.configService.get<string>('GCS_EMULATOR_HOST') ??
       undefined
     )
   }

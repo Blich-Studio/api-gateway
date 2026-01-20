@@ -94,7 +94,7 @@ export class EmailService implements OnModuleInit {
     // Escape HTML to prevent XSS attacks
     const safeName = escapeHtml(name)
     const safeUrlText = escapeHtml(verificationUrl)
-    const companyName = this.appConfig.companyName
+    const { companyName } = this.appConfig
 
     return `
       <!DOCTYPE html>

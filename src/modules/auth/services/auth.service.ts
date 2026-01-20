@@ -30,15 +30,14 @@ export class AuthService {
     private readonly appConfig: AppConfigService,
     @Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient
   ) {
-    const jwksTokenEndpoint = this.appConfig.jwksTokenEndpoint
-    const jwksApiKey = this.appConfig.jwksTokenApiKey
+    const { jwksTokenEndpoint, jwksTokenApiKey } = this.appConfig
 
-    if (!jwksTokenEndpoint || !jwksApiKey) {
+    if (!jwksTokenEndpoint || !jwksTokenApiKey) {
       throw new MissingConfigurationError('JWKS_TOKEN_ENDPOINT and JWKS_TOKEN_API_KEY')
     }
 
     this.jwksTokenEndpoint = jwksTokenEndpoint
-    this.jwksApiKey = jwksApiKey
+    this.jwksApiKey = jwksTokenApiKey
   }
 
   async login(email: string, password: string) {
