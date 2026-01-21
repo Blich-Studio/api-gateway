@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { ConfigService } from '@nestjs/config'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AuthService } from './auth.service'
 import {
@@ -11,6 +10,7 @@ import {
   AuthenticationError,
 } from '../../../common/errors'
 import { POSTGRES_CLIENT } from '../../database/postgres.module'
+import { AppConfigService } from '../../../common/config'
 
 // Mock bcrypt module completely
 vi.mock('bcrypt', () => ({
@@ -51,14 +51,9 @@ describe('AuthService - Behavior Tests', () => {
     isVerified: false,
   }
 
-  const mockConfigService = {
-    get: vi.fn((key: string) => {
-      const config: Record<string, string> = {
-        JWKS_TOKEN_ENDPOINT: 'http://localhost:3100/token',
-        JWKS_TOKEN_API_KEY: 'test-api-key',
-      }
-      return config[key]
-    }),
+  const mockAppConfigService = {
+    jwksTokenEndpoint: 'http://localhost:3100/token',
+    jwksTokenApiKey: 'test-api-key',
   }
 
   const mockPostgresClient = {
@@ -74,8 +69,8 @@ describe('AuthService - Behavior Tests', () => {
       providers: [
         AuthService,
         {
-          provide: ConfigService,
-          useValue: mockConfigService,
+          provide: AppConfigService,
+          useValue: mockAppConfigService,
         },
         {
           provide: POSTGRES_CLIENT,
@@ -324,7 +319,7 @@ describe('AuthService - Behavior Tests', () => {
       // Then: should return new access token
       expect(result).toEqual({ access_token: newAccessToken })
       expect(mockPostgresClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT id FROM users WHERE refresh_token ='),
+        expect.stringContaining('SELECT id, refresh_token_expires_at FROM users WHERE refresh_token ='),
         [refreshToken]
       )
       expect(fetch).toHaveBeenCalledWith(

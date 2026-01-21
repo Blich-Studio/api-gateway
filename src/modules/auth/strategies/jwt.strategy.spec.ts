@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { ConfigService } from '@nestjs/config'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { JwtStrategy } from './jwt.strategy'
 import type { Request } from 'express'
+import { AppConfigService } from '../../../common/config'
 
 // Mock jose module
 vi.mock('jose', () => ({
@@ -15,15 +15,10 @@ import { jwtVerify, createRemoteJWKSet } from 'jose'
 describe('JwtStrategy - Contract Tests', () => {
   let strategy: JwtStrategy
 
-  const mockConfigService = {
-    get: vi.fn((key: string) => {
-      const config: Record<string, string> = {
-        JWKS_URL: 'https://auth.example.com/.well-known/jwks.json',
-        JWT_ISSUER: 'https://auth.example.com',
-        JWT_AUDIENCE: 'api-gateway',
-      }
-      return config[key]
-    }),
+  const mockAppConfigService = {
+    jwksUrl: 'https://auth.example.com/.well-known/jwks.json',
+    jwtIssuer: 'https://auth.example.com',
+    jwtAudience: 'api-gateway',
   }
 
   beforeEach(async () => {
@@ -33,8 +28,8 @@ describe('JwtStrategy - Contract Tests', () => {
       providers: [
         JwtStrategy,
         {
-          provide: ConfigService,
-          useValue: mockConfigService,
+          provide: AppConfigService,
+          useValue: mockAppConfigService,
         },
       ],
     }).compile()
@@ -43,10 +38,12 @@ describe('JwtStrategy - Contract Tests', () => {
   })
 
   describe('initialization', () => {
-    it('should throw error when JWKS_URL is missing', () => {
-      // Given: missing JWKS_URL configuration
+    it('should throw error when jwksUrl is missing', () => {
+      // Given: missing jwksUrl configuration
       const invalidConfig = {
-        get: vi.fn((key: string) => (key === 'JWKS_URL' ? undefined : 'value')),
+        jwksUrl: undefined,
+        jwtIssuer: 'https://auth.example.com',
+        jwtAudience: 'api-gateway',
       }
 
       // When/Then: should throw configuration error
@@ -56,10 +53,12 @@ describe('JwtStrategy - Contract Tests', () => {
       ).toThrow('Missing required JWT configuration')
     })
 
-    it('should throw error when JWT_ISSUER is missing', () => {
-      // Given: missing JWT_ISSUER configuration
+    it('should throw error when jwtIssuer is missing', () => {
+      // Given: missing jwtIssuer configuration
       const invalidConfig = {
-        get: vi.fn((key: string) => (key === 'JWT_ISSUER' ? undefined : 'value')),
+        jwksUrl: 'https://auth.example.com/.well-known/jwks.json',
+        jwtIssuer: undefined,
+        jwtAudience: 'api-gateway',
       }
 
       // When/Then: should throw configuration error
@@ -69,10 +68,12 @@ describe('JwtStrategy - Contract Tests', () => {
       ).toThrow('Missing required JWT configuration')
     })
 
-    it('should throw error when JWT_AUDIENCE is missing', () => {
-      // Given: missing JWT_AUDIENCE configuration
+    it('should throw error when jwtAudience is missing', () => {
+      // Given: missing jwtAudience configuration
       const invalidConfig = {
-        get: vi.fn((key: string) => (key === 'JWT_AUDIENCE' ? undefined : 'value')),
+        jwksUrl: 'https://auth.example.com/.well-known/jwks.json',
+        jwtIssuer: 'https://auth.example.com',
+        jwtAudience: undefined,
       }
 
       // When/Then: should throw configuration error

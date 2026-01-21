@@ -1,29 +1,27 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { ConfigService } from '@nestjs/config'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EmailService } from './email.service'
+import { AppConfigService } from '../../common/config'
 
 describe('EmailService', () => {
   let service: EmailService
-  let configService: ConfigService
+  let appConfigService: Partial<AppConfigService>
 
   beforeEach(async () => {
-    configService = {
-      get: vi.fn((key: string) => {
-        const config: Record<string, any> = {
-          APP_URL: 'http://localhost:3000',
-          COMPANY_NAME: 'Test Company',
-        }
-        return config[key]
-      }),
-    } as unknown as ConfigService
+    appConfigService = {
+      appUrl: 'http://localhost:3000',
+      companyName: 'Test Company',
+      sendgridApiKey: undefined,
+      emailFrom: undefined,
+      isDevelopment: true,
+    }
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmailService,
         {
-          provide: ConfigService,
-          useValue: configService,
+          provide: AppConfigService,
+          useValue: appConfigService,
         },
       ],
     }).compile()
@@ -101,11 +99,8 @@ describe('EmailService', () => {
       const originalEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'development'
 
-      configService.get = vi.fn((key: string, defaultValue?: any) => {
-        if (key === 'APP_URL') return 'https://example.com'
-        if (key === 'COMPANY_NAME') return 'Test Company'
-        return defaultValue
-      })
+      // Update the mock config service appUrl
+      ;(appConfigService as any).appUrl = 'https://example.com'
 
       const emailData = {
         email: 'user@example.com',
@@ -120,7 +115,7 @@ describe('EmailService', () => {
       const allCalls = loggerSpy.mock.calls
         .map((call) => (typeof call[0] === 'string' ? call[0] : JSON.stringify(call[0])))
         .join('\n')
-      
+
       expect(allCalls).toContain('https://example.com/auth/verify?token=xyz789')
 
       loggerSpy.mockRestore()
@@ -128,8 +123,8 @@ describe('EmailService', () => {
     })
 
     it('should log warning in non-development environments', async () => {
-      const originalEnv = process.env.NODE_ENV
-      process.env.NODE_ENV = 'production'
+      // Set isDevelopment to false to simulate production environment
+      ;(appConfigService as any).isDevelopment = false
 
       const loggerWarnSpy = vi.spyOn(service['logger'], 'warn')
       const emailData = {
@@ -148,7 +143,8 @@ describe('EmailService', () => {
       )
 
       loggerWarnSpy.mockRestore()
-      process.env.NODE_ENV = originalEnv
+      // Reset to development mode
+      ;(appConfigService as any).isDevelopment = true
     })
 
     it('should escape HTML in email template', async () => {
