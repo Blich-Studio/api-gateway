@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { escapeHtml } from '../../common/utils/html.util'
+import { AppConfigService } from '../../common/config'
 import sgMail from '@sendgrid/mail'
 
 export const EMAIL_SERVICE = 'EMAIL_SERVICE'
@@ -17,11 +17,11 @@ export class EmailService implements OnModuleInit {
   private sendgridApiKey: string | undefined
   private emailFrom: string | undefined
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly appConfig: AppConfigService) {}
 
   onModuleInit(): void {
-    this.sendgridApiKey = this.configService.get<string>('SENDGRID_API_KEY')
-    this.emailFrom = this.configService.get<string>('EMAIL_FROM')
+    this.sendgridApiKey = this.appConfig.sendgridApiKey
+    this.emailFrom = this.appConfig.emailFrom
 
     if (this.sendgridApiKey && this.emailFrom) {
       sgMail.setApiKey(this.sendgridApiKey)
@@ -29,7 +29,7 @@ export class EmailService implements OnModuleInit {
       // Uncomment below when upgrading to a version that supports it:
       // sgMail.setDataResidency('eu')
       this.logger.log('SendGrid email provider initialized')
-    } else if (process.env.NODE_ENV !== 'development') {
+    } else if (!this.appConfig.isDevelopment) {
       this.logger.warn(
         'SendGrid is not configured. Set SENDGRID_API_KEY and EMAIL_FROM environment variables for email functionality.'
       )
@@ -38,8 +38,7 @@ export class EmailService implements OnModuleInit {
 
   async sendVerificationEmail(data: EmailVerificationData): Promise<void> {
     const { email, name, token } = data
-    const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000')
-    const verificationUrl = `${appUrl}/auth/verify?token=${token}`
+    const verificationUrl = `${this.appConfig.appUrl}/auth/verify?token=${token}`
 
     this.logger.log(`Preparing to send verification email to: ${email}`)
 
@@ -65,7 +64,7 @@ export class EmailService implements OnModuleInit {
     }
 
     // For development: Log the verification URL (with redacted token)
-    if (process.env.NODE_ENV === 'development') {
+    if (this.appConfig.isDevelopment) {
       // Redact the token from URL to prevent exposure in log aggregation systems
       const redactedUrl = verificationUrl.replace(
         /token=[^&]+/,
@@ -95,7 +94,7 @@ export class EmailService implements OnModuleInit {
     // Escape HTML to prevent XSS attacks
     const safeName = escapeHtml(name)
     const safeUrlText = escapeHtml(verificationUrl)
-    const companyName = this.configService.get<string>('COMPANY_NAME', 'Blich Studio')
+    const { companyName } = this.appConfig
 
     return `
       <!DOCTYPE html>

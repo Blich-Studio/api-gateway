@@ -24,6 +24,7 @@ export const ArticleResponseSchema = z.object({
   likesCount: z.number(),
   viewsCount: z.number(),
   isLiked: z.boolean().optional(),
+  readTime: z.number(), // Estimated read time in minutes
   publishedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

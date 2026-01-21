@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcrypt'
 import { randomBytes } from 'crypto'
+import { AppConfigService } from '../../../common/config'
 import { POSTGRES_CLIENT } from '../../database/postgres.module'
 import {
   AuthenticationError,
@@ -27,18 +27,17 @@ export class AuthService {
   private jwksApiKey: string
 
   constructor(
-    private configService: ConfigService,
+    private readonly appConfig: AppConfigService,
     @Inject(POSTGRES_CLIENT) private readonly postgresClient: PostgresClient
   ) {
-    const jwksTokenEndpoint = this.configService.get<string>('JWKS_TOKEN_ENDPOINT')
-    const jwksApiKey = this.configService.get<string>('JWKS_TOKEN_API_KEY')
+    const { jwksTokenEndpoint, jwksTokenApiKey } = this.appConfig
 
-    if (!jwksTokenEndpoint || !jwksApiKey) {
+    if (!jwksTokenEndpoint || !jwksTokenApiKey) {
       throw new MissingConfigurationError('JWKS_TOKEN_ENDPOINT and JWKS_TOKEN_API_KEY')
     }
 
     this.jwksTokenEndpoint = jwksTokenEndpoint
-    this.jwksApiKey = jwksApiKey
+    this.jwksApiKey = jwksTokenApiKey
   }
 
   async login(email: string, password: string) {
@@ -235,14 +234,20 @@ export class AuthService {
       throw new AuthenticationError('Refresh token is required')
     }
 
-    // Validate refresh token exists in database
+    // Validate refresh token exists in database and is not expired
     const result = await this.postgresClient.query(
-      'SELECT id FROM users WHERE refresh_token = $1',
+      'SELECT id, refresh_token_expires_at FROM users WHERE refresh_token = $1',
       [refreshToken]
     )
 
     if (result.rowCount === 0) {
       throw new AuthenticationError('Invalid or expired refresh token')
+    }
+
+    // Check if refresh token has expired
+    const user = result.rows[0] as { id: string; refresh_token_expires_at: Date | null }
+    if (user.refresh_token_expires_at && new Date(user.refresh_token_expires_at) < new Date()) {
+      throw new AuthenticationError('Refresh token has expired')
     }
 
     // Get new access token from JWKS service

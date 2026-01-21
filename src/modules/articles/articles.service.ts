@@ -55,6 +55,15 @@ export class ArticlesService {
   }
 
   /**
+   * Calculate estimated read time in minutes based on word count
+   */
+  private calculateReadTime(content: string): number {
+    const wordsPerMinute = 200
+    const wordCount = content.trim().split(/\s+/).length
+    return Math.max(1, Math.ceil(wordCount / wordsPerMinute))
+  }
+
+  /**
    * Get tags for an article
    */
   private async getTagsForArticle(articleId: string) {
@@ -112,6 +121,7 @@ export class ArticlesService {
       likesCount: row.likes_count,
       viewsCount: row.views_count,
       isLiked,
+      readTime: this.calculateReadTime(row.content),
       publishedAt: row.published_at?.toISOString() ?? null,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),

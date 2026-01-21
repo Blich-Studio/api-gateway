@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { ConfigService } from '@nestjs/config'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createHash } from 'crypto'
 import { UserAuthService } from './user-auth.service'
@@ -10,12 +9,13 @@ import {
   InvalidVerificationTokenError,
   VerificationTokenExpiredError,
 } from '../../common/errors'
+import { AppConfigService } from '../../common/config'
 
 describe('UserAuthService', () => {
   let service: UserAuthService
   let postgresClient: PostgresClient
   let emailService: EmailService
-  let configService: ConfigService
+  let appConfigService: Partial<AppConfigService>
 
   beforeEach(async () => {
     // Mock PostgreSQL client
@@ -29,24 +29,13 @@ describe('UserAuthService', () => {
       sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
     } as unknown as EmailService
 
-    // Mock Config Service
-    configService = {
-      get: vi.fn((key: string, defaultValue?: any) => {
-        const config: Record<string, any> = {
-          VERIFICATION_TOKEN_EXPIRY_HOURS: 24,
-          BCRYPT_SALT_ROUNDS: 10,
-          APP_URL: 'http://localhost:3000',
-          COMPANY_NAME: 'Test Company',
-        }
-        return config[key] ?? defaultValue
-      }),
-      getOrThrow: vi.fn((key: string) => {
-        const config: Record<string, any> = {
-          VERIFICATION_TOKEN_EXPIRY_HOURS: 24,
-        }
-        return config[key]
-      }),
-    } as unknown as ConfigService
+    // Mock AppConfigService
+    appConfigService = {
+      verificationTokenExpiryHours: 24,
+      bcryptSaltRounds: 10,
+      appUrl: 'http://localhost:3000',
+      companyName: 'Test Company',
+    }
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,8 +49,8 @@ describe('UserAuthService', () => {
           useValue: emailService,
         },
         {
-          provide: ConfigService,
-          useValue: configService,
+          provide: AppConfigService,
+          useValue: appConfigService,
         },
       ],
     }).compile()
@@ -328,7 +317,7 @@ describe('UserAuthService', () => {
             UserAuthService,
             { provide: 'POSTGRES_CLIENT', useValue: mockClient },
             { provide: 'EMAIL_SERVICE', useValue: emailService },
-            { provide: ConfigService, useValue: configService },
+            { provide: AppConfigService, useValue: appConfigService },
           ],
         }).compile()
 
@@ -348,7 +337,7 @@ describe('UserAuthService', () => {
           UserAuthService,
           { provide: 'POSTGRES_CLIENT', useValue: mockClient },
           { provide: 'EMAIL_SERVICE', useValue: emailService },
-          { provide: ConfigService, useValue: configService },
+          { provide: AppConfigService, useValue: appConfigService },
         ],
       }).compile()
 
