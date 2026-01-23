@@ -27,11 +27,11 @@ export const TokenResponseSchema = z.object({
 export type User = z.infer<typeof UserRowSchema>
 
 /**
- * JWT token payload structure
+ * JWT token payload structure (matches JWKS service schema)
  */
 export interface TokenPayload {
   sub: string
   email: string
-  name: string
+  displayName?: string
   role: 'admin' | 'writer' | 'reader'
 }

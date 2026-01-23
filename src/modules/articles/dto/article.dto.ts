@@ -37,6 +37,12 @@ export const ArticleListItemSchema = ArticleResponseSchema.omit({ content: true 
 
 export class ArticleListItemDto extends createZodDto(ArticleListItemSchema) {}
 
+// Helper to handle empty strings and null as undefined for optional URL fields
+const optionalUrl = z.preprocess(
+  val => (val === '' || val === null ? undefined : val),
+  z.string().url().optional()
+)
+
 // Create Article DTO
 export const CreateArticleSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
@@ -47,7 +53,7 @@ export const CreateArticleSchema = z.object({
     .optional(),
   perex: z.string().min(1, 'Perex is required').max(500, 'Perex must be less than 500 characters'),
   content: z.string().min(1, 'Content is required'),
-  coverImageUrl: z.string().url().optional(),
+  coverImageUrl: optionalUrl,
   status: z.enum(['draft', 'published', 'archived']).default('draft'),
   featured: z.boolean().default(false),
   tags: z.array(z.string()).default([]), // Tag names

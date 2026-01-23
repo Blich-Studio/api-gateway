@@ -20,13 +20,15 @@ interface ProjectRow {
   id: string
   title: string
   slug: string
+  type: 'game' | 'engine' | 'tool' | 'animation' | 'artwork' | 'other'
   description: string
   short_description: string | null
   cover_image_url: string | null
   gallery_urls: string[] | null
-  video_url: string | null
-  external_url: string | null
   github_url: string | null
+  itchio_url: string | null
+  steam_url: string | null
+  youtube_url: string | null
   author_id: string
   author_display_name: string
   author_avatar_url: string | null
@@ -102,13 +104,15 @@ export class ProjectsService {
       id: row.id,
       title: row.title,
       slug: row.slug,
+      type: row.type,
       description: row.description,
       shortDescription: row.short_description,
       coverImageUrl: row.cover_image_url,
       galleryUrls: row.gallery_urls ?? [],
-      videoUrl: row.video_url,
-      externalUrl: row.external_url,
       githubUrl: row.github_url,
+      itchioUrl: row.itchio_url,
+      steamUrl: row.steam_url,
+      youtubeUrl: row.youtube_url,
       author: {
         id: row.author_id,
         displayName: row.author_display_name,
@@ -150,6 +154,12 @@ export class ProjectsService {
     if (query.status) {
       conditions.push(`p.status = $${paramIndex++}`)
       params.push(query.status)
+    }
+
+    // Type filter
+    if (query.type) {
+      conditions.push(`p.type = $${paramIndex++}`)
+      params.push(query.type)
     }
 
     // Author filter
@@ -300,19 +310,21 @@ export class ProjectsService {
     const publishedAt = dto.status === 'published' ? new Date() : null
 
     const result = await this.db.query(
-      `INSERT INTO projects (title, slug, description, short_description, cover_image_url, gallery_urls, video_url, external_url, github_url, author_id, status, featured, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO projects (title, slug, type, description, short_description, cover_image_url, gallery_urls, github_url, itchio_url, steam_url, youtube_url, author_id, status, featured, published_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         dto.title,
         slug,
+        dto.type,
         dto.description,
         dto.shortDescription ?? null,
         dto.coverImageUrl ?? null,
         dto.galleryUrls,
-        dto.videoUrl ?? null,
-        dto.externalUrl ?? null,
         dto.githubUrl ?? null,
+        dto.itchioUrl ?? null,
+        dto.steamUrl ?? null,
+        dto.youtubeUrl ?? null,
         authorId,
         dto.status,
         dto.featured,
@@ -374,6 +386,11 @@ export class ProjectsService {
       values.push(dto.slug)
     }
 
+    if (dto.type !== undefined) {
+      updates.push(`type = $${paramIndex++}`)
+      values.push(dto.type)
+    }
+
     if (dto.description !== undefined) {
       updates.push(`description = $${paramIndex++}`)
       values.push(dto.description)
@@ -394,19 +411,24 @@ export class ProjectsService {
       values.push(dto.galleryUrls)
     }
 
-    if (dto.videoUrl !== undefined) {
-      updates.push(`video_url = $${paramIndex++}`)
-      values.push(dto.videoUrl)
-    }
-
-    if (dto.externalUrl !== undefined) {
-      updates.push(`external_url = $${paramIndex++}`)
-      values.push(dto.externalUrl)
-    }
-
     if (dto.githubUrl !== undefined) {
       updates.push(`github_url = $${paramIndex++}`)
       values.push(dto.githubUrl)
+    }
+
+    if (dto.itchioUrl !== undefined) {
+      updates.push(`itchio_url = $${paramIndex++}`)
+      values.push(dto.itchioUrl)
+    }
+
+    if (dto.steamUrl !== undefined) {
+      updates.push(`steam_url = $${paramIndex++}`)
+      values.push(dto.steamUrl)
+    }
+
+    if (dto.youtubeUrl !== undefined) {
+      updates.push(`youtube_url = $${paramIndex++}`)
+      values.push(dto.youtubeUrl)
     }
 
     if (dto.featured !== undefined) {
