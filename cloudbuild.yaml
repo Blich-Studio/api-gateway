@@ -31,28 +31,7 @@ steps:
       - 'push'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REGISTRY_REPO}/${_SERVICE_NAME}:latest'
 
-  # Step 3: Run database migrations
-  - name: 'postgres:16-alpine'
-    id: 'run-migrations'
-    secretEnv: ['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB']
-    entrypoint: 'sh'
-    args:
-      - '-c'
-      - |
-        echo "Running database migrations..."
-        for f in database/migrations/*.sql; do
-          echo "Applying migration: $$f"
-          PGPASSWORD="$$POSTGRES_PASSWORD" psql \
-            -h "$$POSTGRES_HOST" \
-            -p "$$POSTGRES_PORT" \
-            -U "$$POSTGRES_USER" \
-            -d "$$POSTGRES_DB" \
-            -f "$$f" \
-            -v ON_ERROR_STOP=0 || echo "Migration $$f completed (may have already been applied)"
-        done
-        echo "All migrations completed!"
-
-  # Step 4: Deploy to Cloud Run
+  # Step 3: Deploy to Cloud Run (migrations run automatically on app startup)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy-cloud-run'
     entrypoint: gcloud
@@ -117,21 +96,11 @@ substitutions:
   _EMAIL_FROM_SECRET: 'EMAIL_FROM'
   _GCS_BUCKET_NAME_SECRET: 'GCS_BUCKET_NAME'
 
-# Available secrets from Secret Manager
+# Available secrets from Secret Manager (DB secrets injected via Cloud Run --set-secrets)
 availableSecrets:
   secretManager:
     - versionName: projects/${PROJECT_ID}/secrets/NPM_TOKEN_CLOUDBUILD/versions/latest
       env: 'NPM_TOKEN'
-    - versionName: projects/${PROJECT_ID}/secrets/${_POSTGRES_HOST_SECRET}/versions/latest
-      env: 'POSTGRES_HOST'
-    - versionName: projects/${PROJECT_ID}/secrets/${_POSTGRES_PORT_SECRET}/versions/latest
-      env: 'POSTGRES_PORT'
-    - versionName: projects/${PROJECT_ID}/secrets/${_POSTGRES_USER_SECRET}/versions/latest
-      env: 'POSTGRES_USER'
-    - versionName: projects/${PROJECT_ID}/secrets/${_POSTGRES_PASSWORD_SECRET}/versions/latest
-      env: 'POSTGRES_PASSWORD'
-    - versionName: projects/${PROJECT_ID}/secrets/${_POSTGRES_DB_SECRET}/versions/latest
-      env: 'POSTGRES_DB'
 
 # Build options
 options:

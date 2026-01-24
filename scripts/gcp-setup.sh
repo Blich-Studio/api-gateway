@@ -17,8 +17,6 @@ GCP_PROJECT_ID="${GCP_PROJECT_ID:-}"
 GCP_REGION="${GCP_REGION:-europe-west1}"
 SERVICE_NAME="blich-api-gateway"
 ARTIFACT_REGISTRY_REPO="blich-studio"
-SQL_INSTANCE_PROD="blich-postgres-prod"
-SQL_INSTANCE_STAGING="blich-postgres-staging"
 VPC_CONNECTOR="blich-vpc-connector"
 DB_NAME="blich_studio"
 DB_USER="blich_app"
@@ -73,7 +71,6 @@ enable_apis() {
         run.googleapis.com \
         cloudbuild.googleapis.com \
         artifactregistry.googleapis.com \
-        sqladmin.googleapis.com \
         vpcaccess.googleapis.com \
         secretmanager.googleapis.com \
         cloudresourcemanager.googleapis.com \
@@ -115,85 +112,6 @@ create_vpc_connector() {
             --machine-type=f1-micro
         print_info "VPC connector created ✓"
     fi
-}
-
-# Create Cloud SQL instances
-create_cloud_sql() {
-    local instance_name=$1
-    local tier=$2
-    
-    print_info "Creating Cloud SQL instance: $instance_name..."
-    
-    if gcloud sql instances describe "$instance_name" >/dev/null 2>&1; then
-        print_warning "Cloud SQL instance $instance_name already exists, skipping..."
-        return
-    fi
-    
-    if [ "$instance_name" = "$SQL_INSTANCE_PROD" ]; then
-        gcloud sql instances create "$instance_name" \
-            --database-version=POSTGRES_16 \
-            --tier="$tier" \
-            --region="$GCP_REGION" \
-            --network=default \
-            --no-assign-ip \
-            --enable-bin-log \
-            --backup-start-time=03:00 \
-            --maintenance-window-day=SUN \
-            --maintenance-window-hour=04
-    else
-        gcloud sql instances create "$instance_name" \
-            --database-version=POSTGRES_16 \
-            --tier="$tier" \
-            --region="$GCP_REGION" \
-            --network=default \
-            --no-assign-ip
-    fi
-    
-    print_info "Cloud SQL instance $instance_name created ✓"
-}
-
-# Setup database
-setup_database() {
-    local instance_name=$1
-    
-    print_info "Setting up database on $instance_name..."
-    
-    # Generate secure passwords
-    local root_password=$(openssl rand -base64 32)
-    local app_password=$(openssl rand -base64 32)
-    
-    # Set root password
-    gcloud sql users set-password postgres \
-        --instance="$instance_name" \
-        --password="$root_password"
-    
-    # Create application user
-    if ! gcloud sql users describe "$DB_USER" --instance="$instance_name" >/dev/null 2>&1; then
-        gcloud sql users create "$DB_USER" \
-            --instance="$instance_name" \
-            --password="$app_password"
-    else
-        print_warning "User $DB_USER already exists, skipping user creation..."
-    fi
-    
-    # Create database
-    if ! gcloud sql databases describe "$DB_NAME" --instance="$instance_name" >/dev/null 2>&1; then
-        gcloud sql databases create "$DB_NAME" \
-            --instance="$instance_name"
-    else
-        print_warning "Database $DB_NAME already exists, skipping database creation..."
-    fi
-    
-    # Get connection name
-    local connection_name=$(gcloud sql instances describe "$instance_name" --format='value(connectionName)')
-    
-    print_info "Database setup complete ✓"
-    print_info "Connection name: $connection_name"
-    print_warning "IMPORTANT: Save these credentials securely!"
-    echo "Root password: $root_password"
-    echo "App user: $DB_USER"
-    echo "App password: $app_password"
-    echo ""
 }
 
 # Create secrets
@@ -319,50 +237,38 @@ setup_github_actions() {
 main() {
     print_info "Starting GCP setup for Blich API Gateway..."
     echo ""
-    
+
     # Check prerequisites
     check_prerequisites
-    
+
     # Set project
     set_project
-    
+
     # Enable APIs
     enable_apis
-    
+
     # Create Artifact Registry
     create_artifact_registry
-    
+
     # Create VPC Connector
     create_vpc_connector
-    
-    # Create Cloud SQL instances
-    read -p "Create staging Cloud SQL instance? (y/n) " -n 1 -r
+
+    # Setup database secrets (for GCE PostgreSQL)
+    read -p "Setup database secrets? (y/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        create_cloud_sql "$SQL_INSTANCE_STAGING" "db-f1-micro"
-        setup_database "$SQL_INSTANCE_STAGING"
-        local staging_connection=$(gcloud sql instances describe "$SQL_INSTANCE_STAGING" --format='value(connectionName)')
-        read -p "Enter app password for staging: " staging_password
-        create_secrets "$SQL_INSTANCE_STAGING" "$staging_connection" "$staging_password"
+        read -p "Enter PostgreSQL host (GCE internal IP): " postgres_host
+        read -p "Enter PostgreSQL password: " postgres_password
+        create_secrets "gce" "$postgres_host" "$postgres_password"
     fi
-    
-    read -p "Create production Cloud SQL instance? (y/n) " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        create_cloud_sql "$SQL_INSTANCE_PROD" "db-f1-micro"
-        setup_database "$SQL_INSTANCE_PROD"
-        local prod_connection=$(gcloud sql instances describe "$SQL_INSTANCE_PROD" --format='value(connectionName)')
-        read -p "Enter app password for production: " prod_password
-        create_secrets "$SQL_INSTANCE_PROD" "$prod_connection" "$prod_password"
-    fi
-    
+
     # Setup GitHub Actions
     read -p "Setup GitHub Actions Workload Identity? (y/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         setup_github_actions
     fi
-    
+
     print_info ""
     print_info "=========================================="
     print_info "GCP Setup Complete! ✓"
@@ -370,7 +276,7 @@ main() {
     print_info ""
     print_info "Next steps:"
     echo "1. Save all passwords securely"
-    echo "2. Run database migrations (see GCP_DEPLOYMENT.md)"
+    echo "2. Ensure GCE PostgreSQL instance is running"
     echo "3. Add GitHub secrets (if using GitHub Actions)"
     echo "4. Deploy using: gcloud builds submit --config=cloudbuild.yaml"
     echo ""
