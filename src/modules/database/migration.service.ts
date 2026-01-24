@@ -66,7 +66,11 @@ export class MigrationService implements OnModuleInit {
     const result = await this.postgresClient.query<{ name: string }>(
       'SELECT name FROM _migrations ORDER BY id'
     )
+<<<<<<< HEAD
     return new Set(result.rows.map((row) => row.name))
+=======
+    return new Set(result.rows.map(row => row.name))
+>>>>>>> c745001 (fix: migrations service)
   }
 
   private async applyMigration(migrationsDir: string, filename: string): Promise<void> {
