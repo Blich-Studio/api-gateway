@@ -80,7 +80,7 @@ export class AppConfigService {
   }
 
   get postgresConnectionTimeout(): number {
-    return this.configService.get<number>('POSTGRES_CONNECTION_TIMEOUT', 2000)
+    return this.configService.get<number>('POSTGRES_CONNECTION_TIMEOUT', 10000)
   }
 
   get postgresSslEnabled(): boolean {
