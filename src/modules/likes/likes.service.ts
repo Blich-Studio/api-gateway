@@ -32,9 +32,6 @@ export class LikesService {
       userId,
       articleId,
     ])
-    await this.db.query('UPDATE articles SET likes_count = likes_count + 1 WHERE id = $1', [
-      articleId,
-    ])
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM articles WHERE id = $1', [
@@ -65,10 +62,6 @@ export class LikesService {
     if (result.rows.length === 0) {
       throw new NotFoundException('Like not found')
     }
-    await this.db.query(
-      'UPDATE articles SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1',
-      [articleId]
-    )
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM articles WHERE id = $1', [
@@ -107,9 +100,6 @@ export class LikesService {
       userId,
       projectId,
     ])
-    await this.db.query('UPDATE projects SET likes_count = likes_count + 1 WHERE id = $1', [
-      projectId,
-    ])
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM projects WHERE id = $1', [
@@ -140,10 +130,6 @@ export class LikesService {
     if (result.rows.length === 0) {
       throw new NotFoundException('Like not found')
     }
-    await this.db.query(
-      'UPDATE projects SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1',
-      [projectId]
-    )
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM projects WHERE id = $1', [
@@ -182,9 +168,6 @@ export class LikesService {
       userId,
       commentId,
     ])
-    await this.db.query('UPDATE comments SET likes_count = likes_count + 1 WHERE id = $1', [
-      commentId,
-    ])
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM comments WHERE id = $1', [
@@ -215,10 +198,6 @@ export class LikesService {
     if (result.rows.length === 0) {
       throw new NotFoundException('Like not found')
     }
-    await this.db.query(
-      'UPDATE comments SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1',
-      [commentId]
-    )
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM comments WHERE id = $1', [
