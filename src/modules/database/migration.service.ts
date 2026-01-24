@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
-import { POSTGRES_CLIENT, type PostgresClient } from './postgres.module'
+import { POSTGRES_CLIENT, type PostgresClient } from './postgres.constants'
 
 @Injectable()
 export class MigrationService implements OnModuleInit {
