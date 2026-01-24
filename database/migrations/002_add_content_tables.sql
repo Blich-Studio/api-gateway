@@ -176,22 +176,26 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Create triggers for updated_at
+-- Create triggers for updated_at (idempotent with DROP IF EXISTS)
+DROP TRIGGER IF EXISTS update_tags_updated_at ON tags;
 CREATE TRIGGER update_tags_updated_at
   BEFORE UPDATE ON tags
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_articles_updated_at ON articles;
 CREATE TRIGGER update_articles_updated_at
   BEFORE UPDATE ON articles
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
 CREATE TRIGGER update_projects_updated_at
   BEFORE UPDATE ON projects
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at
   BEFORE UPDATE ON comments
   FOR EACH ROW
@@ -210,6 +214,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_article_likes_count_trigger ON likes;
 CREATE TRIGGER update_article_likes_count_trigger
   AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
@@ -229,6 +234,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_project_likes_count_trigger ON likes;
 CREATE TRIGGER update_project_likes_count_trigger
   AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
@@ -248,6 +254,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_comment_likes_count_trigger ON likes;
 CREATE TRIGGER update_comment_likes_count_trigger
   AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
