@@ -25,8 +25,8 @@ export class MigrationService implements OnModuleInit {
 
     try {
       const files = await readdir(migrationsDir)
-      migrationFiles = files.filter((f) => f.endsWith('.sql')).sort()
-    } catch (error) {
+      migrationFiles = files.filter(f => f.endsWith('.sql')).sort()
+    } catch (_error) {
       this.logger.warn(`Migrations directory not found: ${migrationsDir}`)
       return
     }
@@ -66,11 +66,7 @@ export class MigrationService implements OnModuleInit {
     const result = await this.postgresClient.query<{ name: string }>(
       'SELECT name FROM _migrations ORDER BY id'
     )
-<<<<<<< HEAD
-    return new Set(result.rows.map((row) => row.name))
-=======
     return new Set(result.rows.map(row => row.name))
->>>>>>> c745001 (fix: migrations service)
   }
 
   private async applyMigration(migrationsDir: string, filename: string): Promise<void> {
