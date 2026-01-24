@@ -1,17 +1,11 @@
 import { Inject, Logger, Module, type OnModuleDestroy } from '@nestjs/common'
-import { Pool, type QueryResult } from 'pg'
+import { Pool } from 'pg'
 import { AppConfigModule, AppConfigService } from '../../common/config'
 import { MigrationService } from './migration.service'
+import { POSTGRES_CLIENT, type PostgresClient } from './postgres.constants'
 
-export const POSTGRES_CLIENT = 'POSTGRES_CLIENT'
-
-export interface PostgresClient {
-  query<T extends Record<string, unknown> = Record<string, unknown>>(
-    text: string,
-    params?: unknown[]
-  ): Promise<QueryResult<T>>
-  end(): Promise<void>
-}
+// Re-export for consumers
+export { POSTGRES_CLIENT, type PostgresClient } from './postgres.constants'
 
 @Module({
   imports: [AppConfigModule],
