@@ -4,7 +4,7 @@ import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
-import { AppConfigModule } from './common/config'
+import { AppConfig, AppConfigModule } from './common/config'
 import { AuthModule } from './modules/auth/auth.module'
 import { TagsModule } from './modules/tags/tags.module'
 import { ArticlesModule } from './modules/articles/articles.module'
@@ -23,8 +23,8 @@ import { ActivityModule } from './modules/activity/activity.module'
     AppConfigModule,
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // 60 seconds
-        limit: 10, // Default limit for all routes
+        ttl: AppConfig.RATE_LIMIT_TTL,
+        limit: AppConfig.RATE_LIMIT_DEFAULT,
       },
     ]),
     AuthModule,
