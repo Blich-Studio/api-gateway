@@ -207,8 +207,8 @@ describe('AppConfigService', () => {
       expect(service.postgresIdleTimeout).toBe(30000)
     })
 
-    it('should return default postgresConnectionTimeout as 2000', () => {
-      expect(service.postgresConnectionTimeout).toBe(2000)
+    it('should return default postgresConnectionTimeout as 10000', () => {
+      expect(service.postgresConnectionTimeout).toBe(10000)
     })
 
     it('should return postgresSslEnabled false by default', () => {
