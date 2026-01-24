@@ -214,11 +214,9 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Drop old combined trigger name and create separate insert trigger
 DROP TRIGGER IF EXISTS update_article_likes_count_trigger ON likes;
-DROP TRIGGER IF EXISTS update_article_likes_count_insert_trigger ON likes;
-CREATE TRIGGER update_article_likes_count_insert_trigger
-  AFTER INSERT ON likes
+CREATE TRIGGER update_article_likes_count_trigger
+  AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
   WHEN (NEW.article_id IS NOT NULL)
   EXECUTE FUNCTION update_article_likes_count();
@@ -243,11 +241,9 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Drop old combined trigger name and create separate insert trigger
 DROP TRIGGER IF EXISTS update_project_likes_count_trigger ON likes;
-DROP TRIGGER IF EXISTS update_project_likes_count_insert_trigger ON likes;
-CREATE TRIGGER update_project_likes_count_insert_trigger
-  AFTER INSERT ON likes
+CREATE TRIGGER update_project_likes_count_trigger
+  AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
   WHEN (NEW.project_id IS NOT NULL)
   EXECUTE FUNCTION update_project_likes_count();
@@ -272,18 +268,9 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Drop old combined trigger name and create separate insert trigger
 DROP TRIGGER IF EXISTS update_comment_likes_count_trigger ON likes;
-DROP TRIGGER IF EXISTS update_comment_likes_count_insert_trigger ON likes;
-CREATE TRIGGER update_comment_likes_count_insert_trigger
-  AFTER INSERT ON likes
-  FOR EACH ROW
-  WHEN (NEW.comment_id IS NOT NULL)
-  EXECUTE FUNCTION update_comment_likes_count();
-
-DROP TRIGGER IF EXISTS update_comment_likes_count_delete_trigger ON likes;
-CREATE TRIGGER update_comment_likes_count_delete_trigger
-  AFTER DELETE ON likes
+CREATE TRIGGER update_comment_likes_count_trigger
+  AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
   WHEN (OLD.comment_id IS NOT NULL)
   EXECUTE FUNCTION update_comment_likes_count();
