@@ -218,7 +218,14 @@ DROP TRIGGER IF EXISTS update_article_likes_count_trigger ON likes;
 CREATE TRIGGER update_article_likes_count_trigger
   AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
-  WHEN (NEW.article_id IS NOT NULL OR OLD.article_id IS NOT NULL)
+  WHEN (NEW.article_id IS NOT NULL)
+  EXECUTE FUNCTION update_article_likes_count();
+
+DROP TRIGGER IF EXISTS update_article_likes_count_delete_trigger ON likes;
+CREATE TRIGGER update_article_likes_count_delete_trigger
+  AFTER DELETE ON likes
+  FOR EACH ROW
+  WHEN (OLD.article_id IS NOT NULL)
   EXECUTE FUNCTION update_article_likes_count();
 
 -- Function to update likes_count on projects
@@ -238,7 +245,14 @@ DROP TRIGGER IF EXISTS update_project_likes_count_trigger ON likes;
 CREATE TRIGGER update_project_likes_count_trigger
   AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
-  WHEN (NEW.project_id IS NOT NULL OR OLD.project_id IS NOT NULL)
+  WHEN (NEW.project_id IS NOT NULL)
+  EXECUTE FUNCTION update_project_likes_count();
+
+DROP TRIGGER IF EXISTS update_project_likes_count_delete_trigger ON likes;
+CREATE TRIGGER update_project_likes_count_delete_trigger
+  AFTER DELETE ON likes
+  FOR EACH ROW
+  WHEN (OLD.project_id IS NOT NULL)
   EXECUTE FUNCTION update_project_likes_count();
 
 -- Function to update likes_count on comments
@@ -258,5 +272,5 @@ DROP TRIGGER IF EXISTS update_comment_likes_count_trigger ON likes;
 CREATE TRIGGER update_comment_likes_count_trigger
   AFTER INSERT OR DELETE ON likes
   FOR EACH ROW
-  WHEN (NEW.comment_id IS NOT NULL OR OLD.comment_id IS NOT NULL)
+  WHEN (OLD.comment_id IS NOT NULL)
   EXECUTE FUNCTION update_comment_likes_count();
