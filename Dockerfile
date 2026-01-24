@@ -35,6 +35,9 @@ RUN bun install --production --frozen-lockfile --ignore-scripts
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy database migrations
+COPY --from=builder /app/database ./database
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001 && \
