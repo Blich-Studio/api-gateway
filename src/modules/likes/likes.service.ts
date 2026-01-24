@@ -27,13 +27,16 @@ export class LikesService {
       throw new ConflictException('Article already liked')
     }
 
-    // Create like
+    // Create like and update count
     await this.db.query('INSERT INTO likes (user_id, article_id) VALUES ($1, $2)', [
       userId,
       articleId,
     ])
+    await this.db.query('UPDATE articles SET likes_count = likes_count + 1 WHERE id = $1', [
+      articleId,
+    ])
 
-    // Get updated count (trigger updates it, but re-fetch to be sure)
+    // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM articles WHERE id = $1', [
       articleId,
     ])
@@ -54,7 +57,7 @@ export class LikesService {
       throw new NotFoundException('Article not found')
     }
 
-    // Delete like
+    // Delete like and update count
     const result = await this.db.query(
       'DELETE FROM likes WHERE article_id = $1 AND user_id = $2 RETURNING id',
       [articleId, userId]
@@ -62,6 +65,10 @@ export class LikesService {
     if (result.rows.length === 0) {
       throw new NotFoundException('Like not found')
     }
+    await this.db.query(
+      'UPDATE articles SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1',
+      [articleId]
+    )
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM articles WHERE id = $1', [
@@ -95,9 +102,12 @@ export class LikesService {
       throw new ConflictException('Project already liked')
     }
 
-    // Create like
+    // Create like and update count
     await this.db.query('INSERT INTO likes (user_id, project_id) VALUES ($1, $2)', [
       userId,
+      projectId,
+    ])
+    await this.db.query('UPDATE projects SET likes_count = likes_count + 1 WHERE id = $1', [
       projectId,
     ])
 
@@ -122,7 +132,7 @@ export class LikesService {
       throw new NotFoundException('Project not found')
     }
 
-    // Delete like
+    // Delete like and update count
     const result = await this.db.query(
       'DELETE FROM likes WHERE project_id = $1 AND user_id = $2 RETURNING id',
       [projectId, userId]
@@ -130,6 +140,10 @@ export class LikesService {
     if (result.rows.length === 0) {
       throw new NotFoundException('Like not found')
     }
+    await this.db.query(
+      'UPDATE projects SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1',
+      [projectId]
+    )
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM projects WHERE id = $1', [
@@ -163,9 +177,12 @@ export class LikesService {
       throw new ConflictException('Comment already liked')
     }
 
-    // Create like
+    // Create like and update count
     await this.db.query('INSERT INTO likes (user_id, comment_id) VALUES ($1, $2)', [
       userId,
+      commentId,
+    ])
+    await this.db.query('UPDATE comments SET likes_count = likes_count + 1 WHERE id = $1', [
       commentId,
     ])
 
@@ -190,7 +207,7 @@ export class LikesService {
       throw new NotFoundException('Comment not found')
     }
 
-    // Delete like
+    // Delete like and update count
     const result = await this.db.query(
       'DELETE FROM likes WHERE comment_id = $1 AND user_id = $2 RETURNING id',
       [commentId, userId]
@@ -198,6 +215,10 @@ export class LikesService {
     if (result.rows.length === 0) {
       throw new NotFoundException('Like not found')
     }
+    await this.db.query(
+      'UPDATE comments SET likes_count = GREATEST(0, likes_count - 1) WHERE id = $1',
+      [commentId]
+    )
 
     // Get updated count
     const updated = await this.db.query('SELECT likes_count FROM comments WHERE id = $1', [

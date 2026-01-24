@@ -53,7 +53,7 @@ export class AuthService {
     const token = await this.issueToken({
       sub: user.id,
       email: user.email,
-      name: user.nickname,
+      displayName: user.nickname,
       role: user.role,
     })
 
@@ -234,9 +234,11 @@ export class AuthService {
       throw new AuthenticationError('Refresh token is required')
     }
 
-    // Validate refresh token exists in database and is not expired
+    // Validate refresh token exists in database and get user info for new token
     const result = await this.postgresClient.query(
-      'SELECT id, refresh_token_expires_at FROM users WHERE refresh_token = $1',
+      `SELECT id, email, nickname, role, refresh_token_expires_at
+       FROM users
+       WHERE refresh_token = $1`,
       [refreshToken]
     )
 
@@ -244,51 +246,27 @@ export class AuthService {
       throw new AuthenticationError('Invalid or expired refresh token')
     }
 
+    const user = result.rows[0] as {
+      id: string
+      email: string
+      nickname: string | null
+      role: string
+      refresh_token_expires_at: Date | null
+    }
+
     // Check if refresh token has expired
-    const user = result.rows[0] as { id: string; refresh_token_expires_at: Date | null }
     if (user.refresh_token_expires_at && new Date(user.refresh_token_expires_at) < new Date()) {
       throw new AuthenticationError('Refresh token has expired')
     }
 
-    // Get new access token from JWKS service
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => {
-        controller.abort()
-      }, 10000)
+    // Issue new access token using user's claims
+    const newAccessToken = await this.issueToken({
+      sub: user.id,
+      email: user.email,
+      displayName: user.nickname ?? undefined,
+      role: user.role as 'admin' | 'writer' | 'reader',
+    })
 
-      const response = await fetch(this.jwksTokenEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': this.jwksApiKey,
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-        signal: controller.signal,
-      })
-
-      if (!response.ok) {
-        throw new AuthenticationError(`Token service returned ${response.status}`)
-      }
-
-      const data = (await response.json()) as Record<string, unknown>
-      clearTimeout(timeout)
-
-      if (typeof data.access_token !== 'string' || !data.access_token) {
-        throw new InvalidAuthResponseError('Invalid token response from service')
-      }
-
-      return { access_token: data.access_token }
-    } catch (error) {
-      if (error instanceof AuthenticationError) {
-        throw error
-      }
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new AuthServiceUnavailableError('Token refresh request timed out')
-      }
-
-      throw new AuthServiceUnavailableError('Failed to refresh access token')
-    }
+    return { access_token: newAccessToken }
   }
 }

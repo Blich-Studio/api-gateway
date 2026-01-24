@@ -55,7 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       return {
         userId: payload.sub,
         email: payload.email,
-        name: payload.name as string | undefined,
+        name: payload.displayName as string | undefined,
       }
     } catch (_error) {
       throw new Error('Invalid or expired token')

@@ -7,7 +7,6 @@ import {
   AuthServiceUnavailableError,
   InvalidAuthResponseError,
   TokenGenerationError,
-  AuthenticationError,
 } from '../../../common/errors'
 import { POSTGRES_CLIENT } from '../../database/postgres.module'
 import { AppConfigService } from '../../../common/config'
@@ -304,14 +303,21 @@ describe('AuthService - Behavior Tests', () => {
       const newAccessToken = 'new-access-token-jwt'
 
       mockPostgresClient.query.mockResolvedValueOnce({
-        rows: [{ id: userId, refresh_token: refreshToken }],
+        rows: [{
+          id: userId,
+          email: 'test@example.com',
+          nickname: 'Test User',
+          role: 'reader',
+          refresh_token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        }],
         rowCount: 1,
       })
 
       vi.mocked(fetch).mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ access_token: newAccessToken }),
-      } as Response)
+        headers: { get: () => 'application/json' },
+        json: async () => ({ token: newAccessToken }),
+      } as unknown as Response)
 
       // When: calling refreshToken with valid refresh token
       const result = await service.refreshToken(refreshToken)
@@ -319,7 +325,7 @@ describe('AuthService - Behavior Tests', () => {
       // Then: should return new access token
       expect(result).toEqual({ access_token: newAccessToken })
       expect(mockPostgresClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT id, refresh_token_expires_at FROM users WHERE refresh_token ='),
+        expect.stringContaining('SELECT id, email, nickname, role, refresh_token_expires_at'),
         [refreshToken]
       )
       expect(fetch).toHaveBeenCalledWith(
@@ -327,7 +333,7 @@ describe('AuthService - Behavior Tests', () => {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            'X-API-Key': 'test-api-key',
+            'x-api-key': 'test-api-key',
             'Content-Type': 'application/json',
           }),
         })
@@ -355,7 +361,13 @@ describe('AuthService - Behavior Tests', () => {
       const userId = '550e8400-e29b-41d4-a716-446655440001'
 
       mockPostgresClient.query.mockResolvedValueOnce({
-        rows: [{ id: userId, refresh_token: refreshToken }],
+        rows: [{
+          id: userId,
+          email: 'test@example.com',
+          nickname: 'Test User',
+          role: 'reader',
+          refresh_token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        }],
         rowCount: 1,
       })
 
@@ -363,7 +375,8 @@ describe('AuthService - Behavior Tests', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-      } as Response)
+        headers: { get: () => null },
+      } as unknown as Response)
 
       // When/Then: should throw error
       await expect(service.refreshToken(refreshToken)).rejects.toThrow()

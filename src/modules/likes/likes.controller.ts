@@ -1,9 +1,9 @@
-import { Controller, Post, Delete, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common'
+import { Controller, Post, Delete, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
+import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { RolesGuard } from '../auth/guards/roles.guard'
 import { Roles } from '../auth/decorators/roles.decorator'
-import { CurrentUser } from '../auth/decorators/current-user.decorator'
 import { LikesService } from './likes.service'
 
 interface AuthUser {
@@ -13,15 +13,15 @@ interface AuthUser {
 
 @ApiTags('likes')
 @Controller()
+@Roles('reader', 'writer', 'admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiBearerAuth()
 export class LikesController {
   constructor(private readonly likesService: LikesService) {}
 
   // ============ Article Likes ============
 
   @Post('articles/:id/like')
-  @Roles('reader', 'writer', 'admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Like an article (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Article liked successfully' })
   @ApiResponse({ status: 404, description: 'Article not found' })
@@ -31,9 +31,6 @@ export class LikesController {
   }
 
   @Delete('articles/:id/like')
-  @Roles('reader', 'writer', 'admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Unlike an article (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Article unliked successfully' })
   @ApiResponse({ status: 404, description: 'Article or like not found' })
@@ -44,9 +41,6 @@ export class LikesController {
   // ============ Project Likes ============
 
   @Post('projects/:id/like')
-  @Roles('reader', 'writer', 'admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Like a project (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Project liked successfully' })
   @ApiResponse({ status: 404, description: 'Project not found' })
@@ -56,9 +50,6 @@ export class LikesController {
   }
 
   @Delete('projects/:id/like')
-  @Roles('reader', 'writer', 'admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Unlike a project (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Project unliked successfully' })
   @ApiResponse({ status: 404, description: 'Project or like not found' })
@@ -69,9 +60,6 @@ export class LikesController {
   // ============ Comment Likes ============
 
   @Post('comments/:id/like')
-  @Roles('reader', 'writer', 'admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Like a comment (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Comment liked successfully' })
   @ApiResponse({ status: 404, description: 'Comment not found' })
@@ -81,9 +69,6 @@ export class LikesController {
   }
 
   @Delete('comments/:id/like')
-  @Roles('reader', 'writer', 'admin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Unlike a comment (any authenticated user)' })
   @ApiResponse({ status: 200, description: 'Comment unliked successfully' })
   @ApiResponse({ status: 404, description: 'Comment or like not found' })
