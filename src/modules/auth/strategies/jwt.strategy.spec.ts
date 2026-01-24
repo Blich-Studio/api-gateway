@@ -103,7 +103,7 @@ describe('JwtStrategy - Contract Tests', () => {
       const validPayload = {
         sub: '550e8400-e29b-41d4-a716-446655440000',
         email: 'user@example.com',
-        name: 'Test User',
+        displayName: 'Test User',
         iat: 1234567890,
         exp: 9999999999,
       }
@@ -120,7 +120,7 @@ describe('JwtStrategy - Contract Tests', () => {
       expect(result).toEqual({
         userId: validPayload.sub,
         email: validPayload.email,
-        name: validPayload.name,
+        name: validPayload.displayName,
       })
     })
 
