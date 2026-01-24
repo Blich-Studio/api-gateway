@@ -1,6 +1,7 @@
 import { Inject, Logger, Module, type OnModuleDestroy } from '@nestjs/common'
 import { Pool, type QueryResult } from 'pg'
 import { AppConfigModule, AppConfigService } from '../../common/config'
+import { MigrationService } from './migration.service'
 
 export const POSTGRES_CLIENT = 'POSTGRES_CLIENT'
 
@@ -15,6 +16,7 @@ export interface PostgresClient {
 @Module({
   imports: [AppConfigModule],
   providers: [
+    MigrationService,
     {
       provide: POSTGRES_CLIENT,
       useFactory: async (appConfig: AppConfigService) => {

@@ -8,7 +8,7 @@ NestJS-based API Gateway providing authentication, user management, and GraphQL/
 - ✅ GraphQL and REST APIs
 - ✅ PostgreSQL database with migrations
 - ✅ Docker development environment
-- ✅ Production-ready GCP deployment (Cloud Run + Cloud SQL)
+- ✅ Production-ready GCP deployment (Cloud Run + GCE PostgreSQL)
 - ✅ Automated CI/CD with Cloud Build
 
 ## Quick Start
@@ -142,7 +142,7 @@ NPM_TOKEN=your-npm-token
 ### Architecture
 
 ```
-GitHub → Cloud Build → Artifact Registry → Cloud Run → VPC → Cloud SQL
+GitHub → Cloud Build → Artifact Registry → Cloud Run → VPC → GCE PostgreSQL
                                              ↓
                                        Secret Manager
 ```
@@ -199,8 +199,8 @@ gcloud compute networks vpc-access connectors create $VPC_CONNECTOR_NAME \
 **5. Create Secrets**
 
 ```bash
-# Database credentials (use your actual Cloud SQL values)
-echo -n "10.36.0.3" | gcloud secrets create POSTGRES_HOST --data-file=-
+# Database credentials (use your actual PostgreSQL values)
+echo -n "your-db-host" | gcloud secrets create POSTGRES_HOST --data-file=-
 echo -n "5432" | gcloud secrets create POSTGRES_PORT --data-file=-
 echo -n "blich_app" | gcloud secrets create POSTGRES_USER --data-file=-
 echo -n "your-db-password" | gcloud secrets create POSTGRES_PASSWORD --data-file=-
@@ -356,23 +356,29 @@ gcloud run services update-traffic blich-api-gateway \
 
 ## Database Migrations
 
-Migrations are located in `database/migrations/` and run automatically on container startup.
+Migrations are located in `database/migrations/` and run automatically on application startup. The app tracks applied migrations in a `_migrations` table to ensure each migration runs only once.
 
-**Manual migration** (via Cloud SQL Proxy):
+**How it works:**
+1. On startup, the `MigrationService` checks for pending migrations
+2. Each `.sql` file in `database/migrations/` is run in alphabetical order
+3. Applied migrations are tracked in the `_migrations` table
+4. Migrations run inside a transaction for safety
 
+**Adding a new migration:**
 ```bash
-# Download Cloud SQL Proxy
-curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.darwin.amd64
-chmod +x cloud-sql-proxy
+# Create a new migration file with timestamp prefix
+touch database/migrations/009_your_migration_name.sql
+```
 
-# Start proxy
-./cloud-sql-proxy PROJECT_ID:REGION:INSTANCE_NAME &
+**Manual migration** (if needed):
+```bash
+# SSH into GCE instance
+gcloud compute ssh <INSTANCE_NAME> --zone=<ZONE>
 
-# Run migrations
-psql -h localhost -U blich_app -d blich_studio -f database/migrations/001_user_registration.sql
-
-# Stop proxy
-pkill cloud-sql-proxy
+# Run migration inside postgres container
+docker exec -i <postgres_container> psql -U postgres -d blich_studio << 'EOF'
+-- Your migration SQL here
+EOF
 ```
 
 ## Troubleshooting
@@ -434,9 +440,9 @@ database/
 
 ## Cost Estimates
 
-**GCP Production (~$20-60/month)**:
+**GCP Production (~$15-50/month)**:
 - Cloud Run: $5-30 (auto-scales to zero)
-- Cloud SQL: $10-25 (db-f1-micro or higher)
+- GCE PostgreSQL: $5-15 (e2-micro or higher)
 - VPC Connector: $7
 - Artifact Registry: ~$1
 - Cloud Build: Free (120 build-min/day)
