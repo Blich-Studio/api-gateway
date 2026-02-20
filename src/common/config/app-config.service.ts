@@ -170,6 +170,10 @@ export class AppConfigService {
     return this.configService.get<string>('APP_URL', 'http://localhost:3000')
   }
 
+  get publicWebUrl(): string {
+    return this.configService.get<string>('PUBLIC_WEB_URL', this.appUrl)
+  }
+
   get companyName(): string {
     return this.configService.get<string>('COMPANY_NAME', 'Blich Studio')
   }
