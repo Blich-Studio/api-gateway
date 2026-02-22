@@ -99,8 +99,8 @@ describe('EmailService', () => {
       const originalEnv = process.env.NODE_ENV
       process.env.NODE_ENV = 'development'
 
-      // Update the mock config service appUrl
-      ;(appConfigService as any).appUrl = 'https://example.com'
+      // Update the mock config service publicWebUrl
+      ;(appConfigService as any).publicWebUrl = 'https://example.com'
 
       const emailData = {
         email: 'user@example.com',

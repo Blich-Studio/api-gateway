@@ -38,7 +38,7 @@ export class EmailService implements OnModuleInit {
 
   async sendVerificationEmail(data: EmailVerificationData): Promise<void> {
     const { email, name, token } = data
-    const verificationUrl = `${this.appConfig.appUrl}/auth/verify?token=${token}`
+    const verificationUrl = `${this.appConfig.publicWebUrl}/auth/verify?token=${token}`
 
     this.logger.log(`Preparing to send verification email to: ${email}`)
 
