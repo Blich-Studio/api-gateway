@@ -21,7 +21,7 @@ data "terraform_remote_state" "shared" {
 }
 
 module "api_gateway" {
-  source = "../../terraform-modules/modules/cloud-run"
+  source = "../terraform-modules/modules/cloud-run"
 
   service_name    = "blich-api-gateway"
   environment     = data.terraform_remote_state.shared.outputs.environment

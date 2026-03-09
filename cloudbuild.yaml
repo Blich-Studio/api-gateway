@@ -21,13 +21,18 @@ steps:
     id: 'push-image'
     args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}']
 
-  # Step 3: Terraform init
+  # Step 3: Download shared Terraform modules from GCS
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: 'fetch-tf-modules'
+    args: ['-m', 'cp', '-r', 'gs://blichstudio-infras-terraform-state/terraform-modules/modules', 'terraform-modules/modules']
+
+  # Step 4: Terraform init
   - name: 'hashicorp/terraform:1.9'
     id: 'tf-init'
     dir: 'deploy'
     args: ['init', '-input=false']
 
-  # Step 4: Terraform plan
+  # Step 5: Terraform plan
   - name: 'hashicorp/terraform:1.9'
     id: 'tf-plan'
     dir: 'deploy'
@@ -37,7 +42,7 @@ steps:
       - '-var=container_image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${SHORT_SHA}'
       - '-out=tfplan'
 
-  # Step 5: Terraform apply
+  # Step 6: Terraform apply
   - name: 'hashicorp/terraform:1.9'
     id: 'tf-apply'
     dir: 'deploy'
