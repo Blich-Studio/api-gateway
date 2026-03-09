@@ -51,6 +51,7 @@ module "api_gateway" {
   environment_variables = {
     NODE_ENV            = "production"
     APP_URL             = "https://api.blichstudio.com"
+    PUBLIC_WEB_URL      = "https://blichstudio.com"
     JWKS_URL            = "https://jwks.blichstudio.com/.well-known/jwks.json"
     JWKS_TOKEN_ENDPOINT = "https://jwks.blichstudio.com/token"
     JWT_ISSUER          = "https://jwks.blichstudio.com"
