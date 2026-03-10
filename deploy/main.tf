@@ -33,11 +33,11 @@ module "api_gateway" {
   cpu_limit    = "1"
   memory_limit = "512Mi"
 
-  min_instances = 0
+  min_instances = 1
   max_instances = 10
 
   cpu_idle          = true
-  startup_cpu_boost = false
+  startup_cpu_boost = true
   request_timeout   = 300
 
   # Direct VPC Egress for Cloud SQL access
