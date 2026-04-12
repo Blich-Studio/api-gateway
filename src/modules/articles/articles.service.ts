@@ -279,7 +279,7 @@ export class ArticlesService {
     const result = await this.db.query(
       `SELECT 
         a.*,
-        u.display_name as author_display_name,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as author_display_name,
         u.avatar_url as author_avatar_url
        FROM articles a
        INNER JOIN users u ON u.id = a.author_id
@@ -346,7 +346,7 @@ export class ArticlesService {
     const result = await this.db.query(
       `SELECT 
         a.*,
-        u.display_name as author_display_name,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as author_display_name,
         u.avatar_url as author_avatar_url
        FROM articles a
        INNER JOIN users u ON u.id = a.author_id
@@ -368,7 +368,7 @@ export class ArticlesService {
     const result = await this.db.query(
       `SELECT 
         a.*,
-        u.display_name as author_display_name,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as author_display_name,
         u.avatar_url as author_avatar_url
        FROM articles a
        INNER JOIN users u ON u.id = a.author_id

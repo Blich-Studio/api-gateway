@@ -280,7 +280,8 @@ export class AuthService {
       )
     } catch (error) {
       this.logger.error('Failed to rotate refresh token', error)
-      // If rotation fails, still return the new access token but log the issue
+      // Rotation failed — return the old token (still valid in DB) so the client doesn't store a dead token
+      return { access_token: newAccessToken, refresh_token: refreshToken }
     }
 
     return { access_token: newAccessToken, refresh_token: newRefreshToken }
