@@ -50,6 +50,9 @@ export class EmailService implements OnModuleInit {
           from: this.emailFrom,
           subject: 'Verify your email address',
           html: this.getVerificationEmailTemplate(name, verificationUrl),
+          trackingSettings: {
+            clickTracking: { enable: false, enableText: false },
+          },
         }
         await sgMail.send(msg)
         this.logger.log(`Verification email sent successfully to: ${email}`)

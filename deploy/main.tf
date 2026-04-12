@@ -21,7 +21,7 @@ data "terraform_remote_state" "shared" {
 }
 
 module "api_gateway" {
-  source = "../../terraform-modules/modules/cloud-run"
+  source = "../terraform-modules/modules/cloud-run"
 
   service_name    = "blich-api-gateway"
   environment     = data.terraform_remote_state.shared.outputs.environment
@@ -33,11 +33,11 @@ module "api_gateway" {
   cpu_limit    = "1"
   memory_limit = "512Mi"
 
-  min_instances = 0
+  min_instances = 1
   max_instances = 10
 
   cpu_idle          = true
-  startup_cpu_boost = false
+  startup_cpu_boost = true
   request_timeout   = 300
 
   # Direct VPC Egress for Cloud SQL access

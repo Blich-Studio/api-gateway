@@ -28,8 +28,8 @@ steps:
     args:
       - '-c'
       - |
-        mkdir -p /terraform-modules && \
-        gsutil -m cp -r gs://blichstudio-infras-terraform-state/terraform-modules/modules /terraform-modules/
+        mkdir -p terraform-modules && \
+        gsutil -m cp -r gs://blichstudio-infras-terraform-state/terraform-modules/modules terraform-modules/
 
   # Step 4: Terraform init
   - name: 'hashicorp/terraform:1.9'
