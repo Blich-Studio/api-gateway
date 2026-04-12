@@ -64,7 +64,7 @@ export class ArticlesService {
   }
 
   /**
-   * Get tags for an article
+   * Get tags for a single article (used by single-article lookups)
    */
   private async getTagsForArticle(articleId: string) {
     const result = await this.db.query(
@@ -85,7 +85,78 @@ export class ArticlesService {
   }
 
   /**
-   * Check if user has liked an article
+   * Batch fetch tags for multiple articles — avoids N+1 in list queries
+   */
+  private async getTagsForArticlesBatch(articleIds: string[]): Promise<
+    Map<
+      string,
+      Array<{
+        id: string
+        name: string
+        slug: string
+        description: string | null
+        createdAt: string
+        updatedAt: string
+      }>
+    >
+  > {
+    const map = new Map<
+      string,
+      Array<{
+        id: string
+        name: string
+        slug: string
+        description: string | null
+        createdAt: string
+        updatedAt: string
+      }>
+    >()
+    if (articleIds.length === 0) return map
+
+    const result = await this.db.query(
+      `SELECT at.article_id, t.id, t.name, t.slug, t.description, t.created_at, t.updated_at
+       FROM tags t
+       INNER JOIN article_tags at ON at.tag_id = t.id
+       WHERE at.article_id = ANY($1)
+       ORDER BY t.name`,
+      [articleIds]
+    )
+
+    for (const row of result.rows) {
+      const aid = row.article_id as string
+      if (!map.has(aid)) map.set(aid, [])
+      const tags = map.get(aid)
+      if (tags) {
+        tags.push({
+          id: row.id as string,
+          name: row.name as string,
+          slug: row.slug as string,
+          description: row.description as string | null,
+          createdAt: (row.created_at as Date).toISOString(),
+          updatedAt: (row.updated_at as Date).toISOString(),
+        })
+      }
+    }
+    return map
+  }
+
+  /**
+   * Batch fetch liked article IDs for a user — avoids N+1 in list queries
+   */
+  private async getLikedArticleIdsBatch(
+    articleIds: string[],
+    userId?: string
+  ): Promise<Set<string>> {
+    if (!userId || articleIds.length === 0) return new Set()
+    const result = await this.db.query(
+      'SELECT article_id FROM likes WHERE article_id = ANY($1) AND user_id = $2',
+      [articleIds, userId]
+    )
+    return new Set(result.rows.map(r => r.article_id as string))
+  }
+
+  /**
+   * Check if user has liked an article (used by single-article lookups)
    */
   private async hasUserLiked(articleId: string, userId?: string): Promise<boolean> {
     if (!userId) return false
@@ -219,9 +290,41 @@ export class ArticlesService {
     )
 
     const totalPages = Math.ceil(total / query.limit)
-    const data = await Promise.all(
-      result.rows.map(row => this.mapToListItem(row as unknown as ArticleRow, userId))
-    )
+
+    // Batch fetch tags and likes to avoid N+1 queries
+    const articleIds = result.rows.map(r => r.id as string)
+    const [tagsMap, likedIds] = await Promise.all([
+      this.getTagsForArticlesBatch(articleIds),
+      this.getLikedArticleIdsBatch(articleIds, userId),
+    ])
+
+    const data: ArticleListItem[] = result.rows.map(row => {
+      const r = row as unknown as ArticleRow
+      const { content: _content, ...listItem } = {
+        id: r.id,
+        title: r.title,
+        slug: r.slug,
+        perex: r.perex,
+        content: r.content,
+        coverImageUrl: r.cover_image_url,
+        author: {
+          id: r.author_id,
+          displayName: r.author_display_name,
+          avatarUrl: r.author_avatar_url,
+        },
+        status: r.status,
+        featured: r.featured,
+        tags: tagsMap.get(r.id) ?? [],
+        likesCount: r.likes_count,
+        viewsCount: r.views_count,
+        isLiked: likedIds.has(r.id),
+        readTime: this.calculateReadTime(r.content),
+        publishedAt: r.published_at?.toISOString() ?? null,
+        createdAt: r.created_at.toISOString(),
+        updatedAt: r.updated_at.toISOString(),
+      }
+      return listItem
+    })
 
     return {
       data,

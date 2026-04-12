@@ -34,7 +34,7 @@ export class CommentsService {
   constructor(@Inject(POSTGRES_CLIENT) private readonly db: PostgresClient) {}
 
   /**
-   * Check if user has liked a comment
+   * Check if user has liked a comment (used by single-comment lookups)
    */
   private async hasUserLiked(commentId: string, userId?: string): Promise<boolean> {
     if (!userId) return false
@@ -43,6 +43,74 @@ export class CommentsService {
       [commentId, userId]
     )
     return result.rows.length > 0
+  }
+
+  /**
+   * Batch fetch liked comment IDs for a user — avoids N+1 in list queries
+   */
+  private async getLikedCommentIdsBatch(
+    commentIds: string[],
+    userId?: string
+  ): Promise<Set<string>> {
+    if (!userId || commentIds.length === 0) return new Set()
+    const result = await this.db.query(
+      'SELECT comment_id FROM likes WHERE comment_id = ANY($1) AND user_id = $2',
+      [commentIds, userId]
+    )
+    return new Set(result.rows.map(r => r.comment_id as string))
+  }
+
+  /**
+   * Batch fetch replies for multiple parent comments — avoids N+1 in list queries
+   */
+  private async getRepliesBatch(
+    parentIds: string[],
+    userId?: string
+  ): Promise<Map<string, CommentResponse[]>> {
+    const map = new Map<string, CommentResponse[]>()
+    if (parentIds.length === 0) return map
+
+    const result = await this.db.query(
+      `SELECT
+        c.*,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as user_display_name,
+        u.avatar_url as user_avatar_url
+       FROM comments c
+       INNER JOIN users u ON u.id = c.user_id
+       WHERE c.parent_id = ANY($1) AND c.status = 'approved'
+       ORDER BY c.created_at ASC`,
+      [parentIds]
+    )
+
+    const replyRows = result.rows as unknown as CommentRow[]
+    const replyIds = replyRows.map(r => r.id)
+    const likedReplyIds = await this.getLikedCommentIdsBatch(replyIds, userId)
+
+    for (const row of replyRows) {
+      const parentId = row.parent_id ?? ''
+      if (!map.has(parentId)) map.set(parentId, [])
+      const replies = map.get(parentId)
+      if (!replies) continue
+      replies.push({
+        id: row.id,
+        content: row.content,
+        user: {
+          id: row.user_id,
+          displayName: row.user_display_name,
+          avatarUrl: row.user_avatar_url,
+        },
+        userId: row.user_id,
+        articleId: row.article_id,
+        projectId: row.project_id,
+        parentId: row.parent_id,
+        status: row.status,
+        likesCount: row.likes_count,
+        isLiked: likedReplyIds.has(row.id),
+        createdAt: row.created_at.toISOString(),
+        updatedAt: row.updated_at.toISOString(),
+      })
+    }
+    return map
   }
 
   /**
@@ -76,9 +144,9 @@ export class CommentsService {
    */
   private async getReplies(parentId: string, userId?: string): Promise<CommentResponse[]> {
     const result = await this.db.query(
-      `SELECT 
+      `SELECT
         c.*,
-        u.display_name as user_display_name,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as user_display_name,
         u.avatar_url as user_avatar_url
        FROM comments c
        INNER JOIN users u ON u.id = c.user_id
@@ -137,9 +205,9 @@ export class CommentsService {
     params.push(query.limit, offset)
 
     const result = await this.db.query(
-      `SELECT 
+      `SELECT
         c.*,
-        u.display_name as user_display_name,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as user_display_name,
         u.avatar_url as user_avatar_url
        FROM comments c
        INNER JOIN users u ON u.id = c.user_id
@@ -150,14 +218,33 @@ export class CommentsService {
     )
 
     const totalPages = Math.ceil(total / query.limit)
-    const comments = await Promise.all(
-      result.rows.map(async row => {
-        const comment = await this.mapToResponse(row as unknown as CommentRow, userId)
-        // Fetch replies for each top-level comment
-        comment.replies = await this.getReplies(comment.id, userId)
-        return comment
-      })
-    )
+
+    // Batch fetch likes and replies to avoid N+1 queries
+    const commentIds = result.rows.map(r => r.id as string)
+    const [likedIds, repliesMap] = await Promise.all([
+      this.getLikedCommentIdsBatch(commentIds, userId),
+      this.getRepliesBatch(commentIds, userId),
+    ])
+
+    const comments: CommentResponse[] = (result.rows as unknown as CommentRow[]).map(row => ({
+      id: row.id,
+      content: row.content,
+      user: {
+        id: row.user_id,
+        displayName: row.user_display_name,
+        avatarUrl: row.user_avatar_url,
+      },
+      userId: row.user_id,
+      articleId: row.article_id,
+      projectId: row.project_id,
+      parentId: row.parent_id,
+      status: row.status,
+      likesCount: row.likes_count,
+      isLiked: likedIds.has(row.id),
+      replies: repliesMap.get(row.id) ?? [],
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString(),
+    }))
 
     return {
       data: comments,
@@ -177,9 +264,9 @@ export class CommentsService {
    */
   async findById(id: string, userId?: string): Promise<CommentResponse> {
     const result = await this.db.query(
-      `SELECT 
+      `SELECT
         c.*,
-        u.display_name as user_display_name,
+        COALESCE(u.display_name, u.nickname, u.first_name, u.email) as user_display_name,
         u.avatar_url as user_avatar_url
        FROM comments c
        INNER JOIN users u ON u.id = c.user_id

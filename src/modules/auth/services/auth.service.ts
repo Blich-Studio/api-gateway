@@ -229,7 +229,9 @@ export class AuthService {
     return randomBytes(32).toString('hex')
   }
 
-  async refreshToken(refreshToken: string): Promise<{ access_token: string }> {
+  async refreshToken(
+    refreshToken: string
+  ): Promise<{ access_token: string; refresh_token: string }> {
     if (!refreshToken) {
       throw new AuthenticationError('Refresh token is required')
     }
@@ -267,6 +269,21 @@ export class AuthService {
       role: user.role as 'admin' | 'writer' | 'reader',
     })
 
-    return { access_token: newAccessToken }
+    // Rotate refresh token — invalidate old token and issue a new one
+    const newRefreshToken = this.generateRefreshToken()
+    const refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    try {
+      await this.postgresClient.query(
+        'UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2 WHERE id = $3',
+        [newRefreshToken, refreshTokenExpiresAt, user.id]
+      )
+    } catch (error) {
+      this.logger.error('Failed to rotate refresh token', error)
+      // Rotation failed — return the old token (still valid in DB) so the client doesn't store a dead token
+      return { access_token: newAccessToken, refresh_token: refreshToken }
+    }
+
+    return { access_token: newAccessToken, refresh_token: newRefreshToken }
   }
 }

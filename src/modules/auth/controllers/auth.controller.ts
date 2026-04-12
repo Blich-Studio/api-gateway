@@ -48,10 +48,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiResponse({
     status: 200,
-    description: 'New access token generated',
+    description: 'New access and refresh tokens generated (refresh token is rotated on each use)',
     schema: {
       example: {
         access_token: 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...',
+        refresh_token: 'a3f1c2d4e5b6...',
       },
     },
   })

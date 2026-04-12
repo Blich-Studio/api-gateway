@@ -14,8 +14,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@blich-studio/shared": ["../../packages/shared/src/index.ts"],
-      "@blich-studio/shared/*": ["../../packages/shared/src/*"]
+      "@blich-studio/shared": ["../shared/src/index.ts"],
+      "@blich-studio/shared/*": ["../shared/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
