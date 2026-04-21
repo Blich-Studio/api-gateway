@@ -183,4 +183,188 @@ describe('ArticlesService', () => {
       await expect(service.findById('missing-id')).rejects.toThrow(NotFoundException)
     })
   })
+
+  describe('findAll', () => {
+    it('should return paginated articles with no filters', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '2' }] })          // count
+        .mockResolvedValueOnce({ rows: [baseArticleRow] })           // list SELECT
+        .mockResolvedValueOnce({ rows: [] })                         // getTagsForArticlesBatch (1 article)
+        // getLikedArticleIdsBatch skipped — no userId
+
+      const result = await service.findAll(
+        { page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      expect(result.data).toHaveLength(1)
+      expect(result.meta.total).toBe(2)
+      expect(result.meta.page).toBe(1)
+      expect(result.meta.hasNext).toBe(false)
+      expect(result.meta.hasPrev).toBe(false)
+    })
+
+    it('should apply status filter', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '1' }] })
+        .mockResolvedValueOnce({ rows: [baseArticleRow] })
+        .mockResolvedValueOnce({ rows: [] }) // getTagsForArticlesBatch (1 article)
+        // getLikedArticleIdsBatch skipped — no userId
+
+      await service.findAll(
+        { status: 'published', page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      const countQuery = mockDb.query.mock.calls[0][0] as string
+      expect(countQuery).toContain('WHERE')
+      expect(mockDb.query.mock.calls[0][1]).toContain('published')
+    })
+
+    it('should apply search filter', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '0' }] }) // count
+        .mockResolvedValueOnce({ rows: [] })               // data SELECT (0 rows — batch calls skip)
+
+      await service.findAll(
+        { search: 'hello', page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      const countQuery = mockDb.query.mock.calls[0][0] as string
+      expect(countQuery).toContain('ILIKE')
+      expect(mockDb.query.mock.calls[0][1]).toContain('%hello%')
+    })
+
+    it('should apply tag filter', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '0' }] }) // count
+        .mockResolvedValueOnce({ rows: [] })               // data SELECT (0 rows — batch calls skip)
+
+      await service.findAll(
+        { tags: 'typescript,nestjs', page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      const countQuery = mockDb.query.mock.calls[0][0] as string
+      expect(countQuery).toContain('article_tags')
+    })
+
+    it('should apply author filter', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '1' }] })
+        .mockResolvedValueOnce({ rows: [baseArticleRow] })
+        .mockResolvedValueOnce({ rows: [] }) // getTagsForArticlesBatch (1 article)
+        // getLikedArticleIdsBatch skipped — no userId
+
+      await service.findAll(
+        { authorId: 'user-id-1', page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      const countQuery = mockDb.query.mock.calls[0][0] as string
+      expect(countQuery).toContain('author_id')
+      expect(mockDb.query.mock.calls[0][1]).toContain('user-id-1')
+    })
+
+    it('should calculate hasNext and hasPrev correctly for page 2', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '25' }] })
+        .mockResolvedValueOnce({ rows: [baseArticleRow] })
+        .mockResolvedValueOnce({ rows: [] }) // getTagsForArticlesBatch (1 article)
+        // getLikedArticleIdsBatch skipped — no userId
+
+      const result = await service.findAll(
+        { page: 2, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      expect(result.meta.hasNext).toBe(true)
+      expect(result.meta.hasPrev).toBe(true)
+      expect(result.meta.totalPages).toBe(3)
+    })
+
+    it('should fetch liked article ids when userId is provided', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '1' }] })
+        .mockResolvedValueOnce({ rows: [baseArticleRow] })
+        .mockResolvedValueOnce({ rows: [] })                               // getTagsForArticlesBatch
+        .mockResolvedValueOnce({ rows: [{ article_id: 'article-id-1' }] }) // getLikedArticleIdsBatch
+
+      const result = await service.findAll(
+        { page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        'user-id-1'
+      )
+
+      expect(result.data[0].isLiked).toBe(true)
+    })
+  })
+
+  describe('findBySlug', () => {
+    it('should return article when found by slug', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [baseArticleRow] }) // SELECT
+        .mockResolvedValueOnce({ rows: [] })               // getTagsForArticle
+
+      const result = await service.findBySlug('test-article')
+
+      expect(result.slug).toBe('test-article')
+      expect(result.title).toBe('Test Article')
+    })
+
+    it('should include userId for hasUserLiked when provided', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [baseArticleRow] }) // SELECT
+        .mockResolvedValueOnce({ rows: [] })               // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })               // hasUserLiked
+
+      const result = await service.findBySlug('test-article', 'user-id-1')
+
+      expect(result.isLiked).toBe(false)
+    })
+
+    it('should throw NotFoundException when slug does not exist', async () => {
+      mockDb.query.mockResolvedValueOnce({ rows: [] })
+
+      await expect(service.findBySlug('missing-slug')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  describe('delete', () => {
+    it('should delete article successfully', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1' }] }) // ownership check
+        .mockResolvedValueOnce({ rows: [] })                            // DELETE
+
+      await expect(service.delete('article-id-1', 'user-id-1')).resolves.toBeUndefined()
+
+      expect(mockDb.query).toHaveBeenCalledTimes(2)
+      const deleteCall = mockDb.query.mock.calls[1]
+      expect(deleteCall[0]).toContain('DELETE FROM articles')
+    })
+
+    it('should throw NotFoundException when article does not exist', async () => {
+      mockDb.query.mockResolvedValueOnce({ rows: [] })
+
+      await expect(service.delete('missing-id', 'user-id-1')).rejects.toThrow(NotFoundException)
+    })
+
+    it('should throw ForbiddenException when user is not the author', async () => {
+      mockDb.query.mockResolvedValueOnce({ rows: [{ author_id: 'other-user' }] })
+
+      await expect(service.delete('article-id-1', 'user-id-1')).rejects.toThrow(ForbiddenException)
+    })
+  })
+
+  describe('incrementViews', () => {
+    it('should run the update query', async () => {
+      mockDb.query.mockResolvedValueOnce({ rows: [] })
+
+      await service.incrementViews('article-id-1')
+
+      const [query, params] = mockDb.query.mock.calls[0]
+      expect(query).toContain('views_count = views_count + 1')
+      expect(params[0]).toBe('article-id-1')
+    })
+  })
 })
