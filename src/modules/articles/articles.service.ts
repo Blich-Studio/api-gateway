@@ -30,6 +30,7 @@ interface ArticleRow {
   featured: boolean
   likes_count: number
   views_count: number
+  project_id: string | null
   published_at: Date | null
   created_at: Date
   updated_at: Date
@@ -193,6 +194,7 @@ export class ArticlesService {
       viewsCount: row.views_count,
       isLiked,
       readTime: this.calculateReadTime(row.content),
+      projectId: row.project_id ?? null,
       publishedAt: row.published_at?.toISOString() ?? null,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
@@ -319,6 +321,7 @@ export class ArticlesService {
         viewsCount: r.views_count,
         isLiked: likedIds.has(r.id),
         readTime: this.calculateReadTime(r.content),
+        projectId: r.project_id ?? null,
         publishedAt: r.published_at?.toISOString() ?? null,
         createdAt: r.created_at.toISOString(),
         updatedAt: r.updated_at.toISOString(),
@@ -399,8 +402,8 @@ export class ArticlesService {
     const publishedAt = dto.status === 'published' ? new Date() : null
 
     const result = await this.db.query(
-      `INSERT INTO articles (title, slug, perex, content, cover_image_url, author_id, status, featured, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO articles (title, slug, perex, content, cover_image_url, author_id, status, featured, published_at, project_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         dto.title,
@@ -412,6 +415,7 @@ export class ArticlesService {
         dto.status,
         dto.featured,
         publishedAt,
+        dto.projectId ?? null,
       ]
     )
 
@@ -498,6 +502,11 @@ export class ArticlesService {
     if (dto.featured !== undefined) {
       updates.push(`featured = $${paramIndex++}`)
       values.push(dto.featured)
+    }
+
+    if (dto.projectId !== undefined) {
+      updates.push(`project_id = $${paramIndex++}`)
+      values.push(dto.projectId ?? null)
     }
 
     if (updates.length > 0) {

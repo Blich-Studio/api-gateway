@@ -25,6 +25,7 @@ export const ArticleResponseSchema = z.object({
   viewsCount: z.number(),
   isLiked: z.boolean().optional(),
   readTime: z.number(), // Estimated read time in minutes
+  projectId: z.string().uuid().nullable().optional(),
   publishedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -57,6 +58,7 @@ export const CreateArticleSchema = z.object({
   status: z.enum(['draft', 'published', 'archived']).default('draft'),
   featured: z.boolean().default(false),
   tags: z.array(z.string()).default([]), // Tag names
+  projectId: z.string().uuid().nullable().optional(),
 })
 
 export class CreateArticleDto extends createZodDto(CreateArticleSchema) {}
