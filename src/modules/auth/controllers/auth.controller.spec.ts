@@ -172,7 +172,7 @@ describe('AuthController - Contract Tests', () => {
         access_token: 'new.jwt.token',
       }
 
-      vi.mocked(mockAuthService.refreshToken).mockResolvedValue(expectedOutput)
+      ;(mockAuthService.refreshToken as any).mockResolvedValue(expectedOutput)
 
       const result = await controller.refresh(validRefreshInput)
 
@@ -182,7 +182,7 @@ describe('AuthController - Contract Tests', () => {
 
     it('should propagate refresh token errors', async () => {
       const refreshError = new AuthServiceUnavailableError()
-      vi.mocked(mockAuthService.refreshToken).mockRejectedValue(refreshError)
+      ;(mockAuthService.refreshToken as any).mockRejectedValue(refreshError)
 
       await expect(controller.refresh(validRefreshInput)).rejects.toThrow(
         AuthServiceUnavailableError

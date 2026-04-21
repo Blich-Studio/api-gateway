@@ -108,7 +108,7 @@ describe('JwtStrategy - Contract Tests', () => {
         exp: 9999999999,
       }
 
-      vi.mocked(jwtVerify).mockResolvedValue({
+      ;(jwtVerify as any).mockResolvedValue({
         payload: validPayload,
         protectedHeader: { alg: 'RS256' },
       } as any)
@@ -139,7 +139,7 @@ describe('JwtStrategy - Contract Tests', () => {
         exp: 9999999999,
       }
 
-      vi.mocked(jwtVerify).mockResolvedValue({
+      ;(jwtVerify as any).mockResolvedValue({
         payload: payloadWithoutName,
         protectedHeader: { alg: 'RS256' },
       } as any)
@@ -185,7 +185,7 @@ describe('JwtStrategy - Contract Tests', () => {
         },
       } as Request
 
-      vi.mocked(jwtVerify).mockRejectedValue(new Error('Token expired'))
+      ;(jwtVerify as any).mockRejectedValue(new Error('Token expired'))
 
       // When/Then: should throw error
       await expect(strategy.validate(mockRequest)).rejects.toThrow('Invalid or expired token')
@@ -199,7 +199,7 @@ describe('JwtStrategy - Contract Tests', () => {
         },
       } as Request
 
-      vi.mocked(jwtVerify).mockRejectedValue(new Error('Invalid signature'))
+      ;(jwtVerify as any).mockRejectedValue(new Error('Invalid signature'))
 
       // When/Then: should throw error
       await expect(strategy.validate(mockRequest)).rejects.toThrow('Invalid or expired token')
@@ -219,7 +219,7 @@ describe('JwtStrategy - Contract Tests', () => {
         exp: 9999999999,
       }
 
-      vi.mocked(jwtVerify).mockResolvedValue({
+      ;(jwtVerify as any).mockResolvedValue({
         payload: invalidPayload,
         protectedHeader: { alg: 'RS256' },
       } as any)
@@ -242,7 +242,7 @@ describe('JwtStrategy - Contract Tests', () => {
         exp: 9999999999,
       }
 
-      vi.mocked(jwtVerify).mockResolvedValue({
+      ;(jwtVerify as any).mockResolvedValue({
         payload: invalidPayload,
         protectedHeader: { alg: 'RS256' },
       } as any)
@@ -266,7 +266,7 @@ describe('JwtStrategy - Contract Tests', () => {
         exp: 9999999999,
       }
 
-      vi.mocked(jwtVerify).mockResolvedValue({
+      ;(jwtVerify as any).mockResolvedValue({
         payload: invalidPayload,
         protectedHeader: { alg: 'RS256' },
       } as any)
@@ -290,7 +290,7 @@ describe('JwtStrategy - Contract Tests', () => {
         exp: 9999999999,
       }
 
-      vi.mocked(jwtVerify).mockResolvedValue({
+      ;(jwtVerify as any).mockResolvedValue({
         payload: invalidPayload,
         protectedHeader: { alg: 'RS256' },
       } as any)
