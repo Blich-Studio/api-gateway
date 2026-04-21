@@ -9,6 +9,19 @@ export const AuthorSchema = z.object({
   avatarUrl: z.string().nullable(),
 })
 
+// Slim article schema for embedding in project response — avoids circular import with articles module
+export const LinkedArticleSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  slug: z.string(),
+  perex: z.string().nullable().optional(),
+  coverImageUrl: z.string().nullable().optional(),
+  publishedAt: z.string().datetime().nullable().optional(),
+  readTime: z.number().optional(),
+})
+
+export type LinkedArticle = z.infer<typeof LinkedArticleSchema>
+
 // Project types
 export const ProjectTypeEnum = z.enum(['game', 'engine', 'tool', 'animation', 'artwork', 'other'])
 export type ProjectType = z.infer<typeof ProjectTypeEnum>
@@ -34,6 +47,7 @@ export const ProjectResponseSchema = z.object({
   likesCount: z.number(),
   viewsCount: z.number(),
   isLiked: z.boolean().optional(),
+  articles: z.array(LinkedArticleSchema).default([]),
   publishedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
