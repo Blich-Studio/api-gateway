@@ -106,6 +106,49 @@ describe('ArticlesService', () => {
         )
       ).rejects.toThrow(ConflictException)
     })
+
+    it('should insert tag associations when tags provided', async () => {
+      const articleRow = { ...baseArticleRow, id: 'new-id' }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [] })             // slug conflict check
+        .mockResolvedValueOnce({ rows: [articleRow] })   // INSERT
+        .mockResolvedValueOnce({ rows: [] })             // INSERT article_tag
+        .mockResolvedValueOnce({ rows: [articleRow] })   // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      mockTagsService.getOrCreateByNames.mockResolvedValue([{ id: 'tag-1', name: 'typescript', slug: 'typescript' }])
+
+      await service.create(
+        { title: 'Test', perex: 'Perex', content: 'Content', status: 'draft', featured: false, tags: ['typescript'] },
+        'user-id-1'
+      )
+
+      expect(mockTagsService.getOrCreateByNames).toHaveBeenCalledWith(['typescript'])
+      const tagInsert = mockDb.query.mock.calls[2]
+      expect(tagInsert[0]).toContain('INSERT INTO article_tags')
+    })
+
+    it('should set published_at when status is published', async () => {
+      const articleRow = { ...baseArticleRow, id: 'new-id', status: 'published', published_at: new Date() }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [articleRow] })
+        .mockResolvedValueOnce({ rows: [articleRow] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+
+      mockTagsService.getOrCreateByNames.mockResolvedValue([])
+
+      await service.create(
+        { title: 'Test', perex: 'P', content: 'C', status: 'published', featured: false, tags: [] },
+        'user-id-1'
+      )
+
+      const insertParams = mockDb.query.mock.calls[1][1] as unknown[]
+      // publishedAt (index 8) should be a Date, not null
+      expect(insertParams[8]).toBeInstanceOf(Date)
+    })
   })
 
   describe('update', () => {
@@ -155,6 +198,131 @@ describe('ArticlesService', () => {
       await expect(
         service.update('missing-id', { title: 'New' }, 'user-id-1')
       ).rejects.toThrow(NotFoundException)
+    })
+
+    it('should update title, perex, content, coverImageUrl, and featured', async () => {
+      const updatedRow = { ...baseArticleRow, title: 'New Title', perex: 'New perex', content: 'New content', cover_image_url: 'http://img.png', featured: true }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] })
+        .mockResolvedValueOnce({ rows: [] })             // UPDATE
+        .mockResolvedValueOnce({ rows: [updatedRow] })   // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      const result = await service.update(
+        'article-id-1',
+        { title: 'New Title', perex: 'New perex', content: 'New content', coverImageUrl: 'http://img.png', featured: true },
+        'user-id-1'
+      )
+
+      expect(result.title).toBe('New Title')
+      const updateCall = mockDb.query.mock.calls[1]
+      expect(updateCall[0]).toContain('title')
+      expect(updateCall[0]).toContain('perex')
+      expect(updateCall[0]).toContain('content')
+      expect(updateCall[0]).toContain('cover_image_url')
+      expect(updateCall[0]).toContain('featured')
+    })
+
+    it('should set published_at when status changes from draft to published', async () => {
+      const updatedRow = { ...baseArticleRow, status: 'published', published_at: new Date() }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] })
+        .mockResolvedValueOnce({ rows: [] })             // UPDATE
+        .mockResolvedValueOnce({ rows: [updatedRow] })   // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      await service.update('article-id-1', { status: 'published' }, 'user-id-1')
+
+      const updateCall = mockDb.query.mock.calls[1]
+      expect(updateCall[0]).toContain('published_at')
+    })
+
+    it('should not set published_at when already published', async () => {
+      const updatedRow = { ...baseArticleRow, status: 'published' }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'published' }] })
+        .mockResolvedValueOnce({ rows: [] })             // UPDATE
+        .mockResolvedValueOnce({ rows: [updatedRow] })   // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      await service.update('article-id-1', { status: 'published' }, 'user-id-1')
+
+      const updateCall = mockDb.query.mock.calls[1]
+      expect(updateCall[0]).not.toContain('published_at')
+    })
+
+    it('should throw ConflictException when slug conflicts with another article', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'other-article' }] }) // slug conflict check
+
+      await expect(
+        service.update('article-id-1', { slug: 'existing-slug' }, 'user-id-1')
+      ).rejects.toThrow(ConflictException)
+    })
+
+    it('should update slug when no conflict', async () => {
+      const updatedRow = { ...baseArticleRow, slug: 'new-slug' }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] })
+        .mockResolvedValueOnce({ rows: [] })             // slug conflict check (no conflict)
+        .mockResolvedValueOnce({ rows: [] })             // UPDATE
+        .mockResolvedValueOnce({ rows: [updatedRow] })   // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      const result = await service.update('article-id-1', { slug: 'new-slug' }, 'user-id-1')
+      expect(result.slug).toBe('new-slug')
+    })
+
+    it('should update tags when provided', async () => {
+      // No other fields → updates.length === 0 → no UPDATE query
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] }) // ownership check
+        .mockResolvedValueOnce({ rows: [] })             // DELETE article_tags
+        .mockResolvedValueOnce({ rows: [] })             // INSERT article_tag
+        .mockResolvedValueOnce({ rows: [baseArticleRow] }) // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      mockTagsService.getOrCreateByNames.mockResolvedValue([{ id: 'tag-1', name: 'typescript', slug: 'typescript' }])
+
+      await service.update('article-id-1', { tags: ['typescript'] }, 'user-id-1')
+
+      const deleteTagsCall = mockDb.query.mock.calls[1]
+      expect(deleteTagsCall[0]).toContain('DELETE FROM article_tags')
+      expect(mockTagsService.getOrCreateByNames).toHaveBeenCalledWith(['typescript'])
+    })
+
+    it('should clear tags when empty array provided', async () => {
+      // No other fields → updates.length === 0 → no UPDATE query
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] }) // ownership check
+        .mockResolvedValueOnce({ rows: [] })             // DELETE article_tags
+        .mockResolvedValueOnce({ rows: [baseArticleRow] }) // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      await service.update('article-id-1', { tags: [] }, 'user-id-1')
+
+      const deleteTagsCall = mockDb.query.mock.calls[1]
+      expect(deleteTagsCall[0]).toContain('DELETE FROM article_tags')
+      expect(mockTagsService.getOrCreateByNames).not.toHaveBeenCalled()
+    })
+
+    it('should skip UPDATE when no updatable fields provided', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] })
+        .mockResolvedValueOnce({ rows: [baseArticleRow] }) // findById SELECT (no UPDATE call)
+        .mockResolvedValueOnce({ rows: [] })             // getTagsForArticle
+        .mockResolvedValueOnce({ rows: [] })             // hasUserLiked
+
+      await service.update('article-id-1', {}, 'user-id-1')
+
+      expect(mockDb.query).toHaveBeenCalledTimes(4)
     })
   })
 
