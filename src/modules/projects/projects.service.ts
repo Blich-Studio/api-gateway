@@ -14,6 +14,7 @@ import {
   type ProjectResponse,
   type ProjectListItem,
   type PaginationMeta,
+  type LinkedArticle,
 } from './dto/project.dto'
 
 interface ProjectRow {
@@ -82,6 +83,34 @@ export class ProjectsService {
   }
 
   /**
+   * Get published articles linked to a project (used in single-project detail only, not list)
+   */
+  private async getArticlesForProject(projectId: string): Promise<LinkedArticle[]> {
+    const result = await this.db.query(
+      `SELECT
+         a.id, a.title, a.slug, a.perex, a.cover_image_url, a.published_at, a.content
+       FROM articles a
+       WHERE a.project_id = $1 AND a.status = 'published'
+       ORDER BY a.published_at DESC`,
+      [projectId]
+    )
+    return result.rows.map(row => {
+      const content = row.content as string | null
+      const wordCount = (content ?? '').trim().split(/\s+/).length
+      const readTime = Math.max(1, Math.ceil(wordCount / 200))
+      return {
+        id: row.id as string,
+        title: row.title as string,
+        slug: row.slug as string,
+        perex: (row.perex as string | null) ?? null,
+        coverImageUrl: (row.cover_image_url as string | null) ?? null,
+        publishedAt: row.published_at ? (row.published_at as Date).toISOString() : null,
+        readTime,
+      }
+    })
+  }
+
+  /**
    * Check if user has liked a project
    */
   private async hasUserLiked(projectId: string, userId?: string): Promise<boolean> {
@@ -96,9 +125,16 @@ export class ProjectsService {
   /**
    * Map database row to response
    */
-  private async mapToResponse(row: ProjectRow, userId?: string): Promise<ProjectResponse> {
-    const tags = await this.getTagsForProject(row.id)
-    const isLiked = await this.hasUserLiked(row.id, userId)
+  private async mapToResponse(
+    row: ProjectRow,
+    userId?: string,
+    includeArticles = true
+  ): Promise<ProjectResponse> {
+    const [tags, isLiked, articles] = await Promise.all([
+      this.getTagsForProject(row.id),
+      this.hasUserLiked(row.id, userId),
+      includeArticles ? this.getArticlesForProject(row.id) : Promise.resolve([]),
+    ])
 
     return {
       id: row.id,
@@ -124,6 +160,7 @@ export class ProjectsService {
       likesCount: row.likes_count,
       viewsCount: row.views_count,
       isLiked,
+      articles,
       publishedAt: row.published_at?.toISOString() ?? null,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),
@@ -134,7 +171,7 @@ export class ProjectsService {
    * Map database row to list item (without description)
    */
   private async mapToListItem(row: ProjectRow, userId?: string): Promise<ProjectListItem> {
-    const full = await this.mapToResponse(row, userId)
+    const full = await this.mapToResponse(row, userId, false)
     const { description: _description, ...listItem } = full
     return listItem
   }

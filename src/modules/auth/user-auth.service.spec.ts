@@ -79,7 +79,7 @@ describe('UserAuthService', () => {
         created_at: new Date(),
       }
 
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ rows: [], rowCount: 0 } as any) // Check user exists
         .mockResolvedValueOnce({ rows: [mockUser], rowCount: 1 } as any) // Insert user
         .mockResolvedValueOnce({ rows: [{ token: 'hash' }], rowCount: 1 } as any) // Insert token
@@ -106,7 +106,7 @@ describe('UserAuthService', () => {
     })
 
     it('should throw EmailAlreadyInUseError if email already exists', async () => {
-      vi.mocked(postgresClient.query).mockResolvedValueOnce({
+      ;(postgresClient.query as any).mockResolvedValueOnce({
         rows: [{ id: 'existing-id' }],
         rowCount: 1,
       } as any)
@@ -126,7 +126,7 @@ describe('UserAuthService', () => {
         created_at: new Date(),
       }
 
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ rows: [], rowCount: 0 } as any)
         .mockResolvedValueOnce({ rows: [mockUser], rowCount: 1 } as any)
         .mockResolvedValueOnce({ rows: [{ token: 'hash' }], rowCount: 1 } as any)
@@ -140,7 +140,7 @@ describe('UserAuthService', () => {
 
   describe('verifyEmail', () => {
     it('should throw InvalidVerificationTokenError for invalid token', async () => {
-      vi.mocked(postgresClient.query).mockResolvedValueOnce({
+      ;(postgresClient.query as any).mockResolvedValueOnce({
         rows: [],
         rowCount: 0,
       } as any)
@@ -155,7 +155,7 @@ describe('UserAuthService', () => {
       const token = 'expired-token-12345678'
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
-      vi.mocked(postgresClient.query).mockResolvedValueOnce({
+      ;(postgresClient.query as any).mockResolvedValueOnce({
         rows: [
           {
             token: tokenHash,
@@ -176,7 +176,7 @@ describe('UserAuthService', () => {
       const token = 'valid-token-12345678'
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({
           rows: [
             {
@@ -206,7 +206,7 @@ describe('UserAuthService', () => {
     it('should send new verification email for unverified user', async () => {
       const email = 'test@example.com'
 
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({
           rows: [
             {
@@ -233,7 +233,7 @@ describe('UserAuthService', () => {
     })
 
     it('should return generic message for non-existent user', async () => {
-      vi.mocked(postgresClient.query).mockResolvedValueOnce({
+      ;(postgresClient.query as any).mockResolvedValueOnce({
         rows: [],
         rowCount: 0,
       } as any)
@@ -245,7 +245,7 @@ describe('UserAuthService', () => {
     })
 
     it('should return helpful message for already verified user', async () => {
-      vi.mocked(postgresClient.query).mockResolvedValueOnce({
+      ;(postgresClient.query as any).mockResolvedValueOnce({
         rows: [
           {
             id: 'user-123',
@@ -272,7 +272,7 @@ describe('UserAuthService', () => {
       const token = 'test-token-12345678'
       const tokenHash = createHash('sha256').update(token).digest('hex')
       
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ // Token prefix lookup
           rows: [{
             token: tokenHash,
@@ -294,7 +294,7 @@ describe('UserAuthService', () => {
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // Then: cleanup query should have been called
-      const cleanupCalls = vi.mocked(postgresClient.query).mock.calls.filter(call =>
+      const cleanupCalls = (postgresClient.query as any).mock.calls.filter(call =>
         typeof call[0] === 'string' && call[0].includes('DELETE FROM verification_tokens WHERE expires_at')
       )
       expect(cleanupCalls.length).toBeGreaterThan(0)
@@ -311,18 +311,20 @@ describe('UserAuthService', () => {
         }),
       }
 
-      await expect(async () => {
-        const module = await Test.createTestingModule({
-          providers: [
-            UserAuthService,
-            { provide: 'POSTGRES_CLIENT', useValue: mockClient },
-            { provide: 'EMAIL_SERVICE', useValue: emailService },
-            { provide: AppConfigService, useValue: appConfigService },
-          ],
-        }).compile()
+      await expect(
+        (async () => {
+          const module = await Test.createTestingModule({
+            providers: [
+              UserAuthService,
+              { provide: 'POSTGRES_CLIENT', useValue: mockClient },
+              { provide: 'EMAIL_SERVICE', useValue: emailService },
+              { provide: AppConfigService, useValue: appConfigService },
+            ],
+          }).compile()
 
-        await module.init()
-      }).rejects.toThrow('TOKEN_PREFIX_LENGTH configuration mismatch')
+          await module.init()
+        })()
+      ).rejects.toThrow('TOKEN_PREFIX_LENGTH configuration mismatch')
     })
 
     it('should handle database error during onModuleInit gracefully', async () => {
@@ -341,12 +343,12 @@ describe('UserAuthService', () => {
         ],
       }).compile()
 
-      await expect(module.init()).resolves.not.toThrow()
+      await expect(module.init()).resolves.toBeDefined()
     })
 
     it('should handle race condition during registration (duplicate email)', async () => {
       // Given: email doesn't exist initially but gets inserted by another request
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ rows: [], rowCount: 0 } as any) // Email doesn't exist check
         .mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: '23505' })) // Insert fails with duplicate key
 
@@ -364,7 +366,7 @@ describe('UserAuthService', () => {
 
     it('should handle unexpected database error during registration', async () => {
       // Given: email doesn't exist but database fails with unexpected error
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ rows: [], rowCount: 0 } as any) // Email doesn't exist check
         .mockRejectedValueOnce(new Error('Database connection lost'))
 
@@ -382,7 +384,7 @@ describe('UserAuthService', () => {
 
     it('should handle error during token creation', async () => {
       // Given: email doesn't exist
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ rows: [], rowCount: 0 } as any) // Email doesn't exist check
         .mockResolvedValueOnce({ // User created
           rows: [
@@ -414,7 +416,7 @@ describe('UserAuthService', () => {
       const token = 'test-token-12345678'
       const tokenHash = createHash('sha256').update(token).digest('hex')
       
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({ // Token prefix lookup
           rows: [{
             token: tokenHash,
@@ -444,7 +446,7 @@ describe('UserAuthService', () => {
       const token1 = 'test-token-12345678'
       const tokenHash1 = createHash('sha256').update(token1).digest('hex')
       
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({
           rows: [{
             token: tokenHash1,
@@ -466,7 +468,7 @@ describe('UserAuthService', () => {
       const token2 = 'test-token-87654321'
       const tokenHash2 = createHash('sha256').update(token2).digest('hex')
       
-      vi.mocked(postgresClient.query)
+      ;(postgresClient.query as any)
         .mockResolvedValueOnce({
           rows: [{
             token: tokenHash2,
@@ -485,7 +487,7 @@ describe('UserAuthService', () => {
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // Then: cleanup should only have been called once (first time)
-      const cleanupCalls = vi.mocked(postgresClient.query).mock.calls.filter(call =>
+      const cleanupCalls = (postgresClient.query as any).mock.calls.filter(call =>
         typeof call[0] === 'string' && call[0].includes('DELETE FROM verification_tokens WHERE expires_at')
       )
       expect(cleanupCalls.length).toBe(1)

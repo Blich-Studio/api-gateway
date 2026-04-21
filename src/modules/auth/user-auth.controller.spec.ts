@@ -49,7 +49,7 @@ describe('UserAuthController', () => {
         createdAt: new Date(),
       }
 
-      vi.mocked(service.register).mockResolvedValue(mockResponse)
+      ;(service.register as any).mockResolvedValue(mockResponse)
 
       const result = await controller.register(registerDto)
 
@@ -63,7 +63,7 @@ describe('UserAuthController', () => {
       const verifyDto = { token: 'test-token-123' }
       const mockResponse = { message: 'Email verified successfully' }
 
-      vi.mocked(service.verifyEmail).mockResolvedValue(mockResponse)
+      ;(service.verifyEmail as any).mockResolvedValue(mockResponse)
 
       const result = await controller.verifyEmail(verifyDto)
 
@@ -79,7 +79,7 @@ describe('UserAuthController', () => {
         message: 'If this email is registered and unverified, a verification email has been sent',
       }
 
-      vi.mocked(service.resendVerification).mockResolvedValue(mockResponse)
+      ;(service.resendVerification as any).mockResolvedValue(mockResponse)
 
       const result = await controller.resendVerification(resendDto)
 

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+/// <reference types="vitest/globals" />
 import { AuthService } from './auth.service'
 import {
   InvalidCredentialsError,
@@ -91,7 +91,7 @@ describe('AuthService - Behavior Tests', () => {
       })
 
       // And: password verification succeeds
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service returns valid token
       const mockToken = 'valid.jwt.token'
@@ -103,7 +103,7 @@ describe('AuthService - Behavior Tests', () => {
 
       // And: randomBytes generates a predictable refresh token
       const mockRefreshToken = 'mocked-refresh-token-1234567890abcdef'
-      vi.mocked(randomBytes).mockReturnValue({
+      ;(randomBytes as any).mockReturnValue({
         toString: () => mockRefreshToken,
       } as any)
 
@@ -135,7 +135,7 @@ describe('AuthService - Behavior Tests', () => {
       })
 
       // And: password verification succeeds
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service returns valid token
       const mockToken = 'valid.jwt.token'
@@ -147,7 +147,7 @@ describe('AuthService - Behavior Tests', () => {
 
       // And: randomBytes generates a predictable refresh token
       const mockRefreshToken = 'mocked-refresh-token-1234567890abcdef'
-      vi.mocked(randomBytes).mockReturnValue({
+      ;(randomBytes as any).mockReturnValue({
         toString: () => mockRefreshToken,
       } as any)
 
@@ -191,7 +191,7 @@ describe('AuthService - Behavior Tests', () => {
       })
 
       // And: password verification fails
-      vi.mocked(bcrypt.compare).mockResolvedValue(false as never)
+      ;(bcrypt.compare as any).mockResolvedValue(false as never)
 
       // When: attempting to login with incorrect password
       // Then: should throw InvalidCredentialsError
@@ -208,7 +208,7 @@ describe('AuthService - Behavior Tests', () => {
       })
 
       // And: password verification succeeds
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // When: attempting to login with unverified email
       // Then: should throw EmailNotVerifiedError
@@ -237,7 +237,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUserInDb],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service returns 500 error
       ;(global.fetch as any).mockResolvedValue({
@@ -259,7 +259,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUserInDb],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service returns non-JSON response
       ;(global.fetch as any).mockResolvedValue({
@@ -280,7 +280,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUserInDb],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service request times out
       const abortError = new Error('The operation was aborted')
@@ -313,17 +313,19 @@ describe('AuthService - Behavior Tests', () => {
         rowCount: 1,
       })
 
-      vi.mocked(fetch).mockResolvedValueOnce({
+      ;(global.fetch as any).mockResolvedValue({
         ok: true,
         headers: { get: () => 'application/json' },
         json: async () => ({ token: newAccessToken }),
       } as unknown as Response)
 
+      ;(randomBytes as any).mockReturnValue({ toString: () => 'mock-new-refresh-token' })
+
       // When: calling refreshToken with valid refresh token
       const result = await service.refreshToken(refreshToken)
 
-      // Then: should return new access token
-      expect(result).toEqual({ access_token: newAccessToken })
+      // Then: should return new access token and rotated refresh token
+      expect(result).toEqual({ access_token: newAccessToken, refresh_token: 'mock-new-refresh-token' })
       expect(mockPostgresClient.query).toHaveBeenCalledWith(
         expect.stringContaining('SELECT id, email, nickname, role, refresh_token_expires_at'),
         [refreshToken]
@@ -371,7 +373,7 @@ describe('AuthService - Behavior Tests', () => {
         rowCount: 1,
       })
 
-      vi.mocked(fetch).mockResolvedValueOnce({
+      ;(global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
@@ -401,7 +403,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUser],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service returns 400 client error
       ;(global.fetch as any).mockResolvedValue({
@@ -422,7 +424,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUser],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: response with valid content-type but invalid JSON
       ;(global.fetch as any).mockResolvedValue({
@@ -444,7 +446,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUser],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: response with valid JSON but wrong structure
       ;(global.fetch as any).mockResolvedValue({
@@ -466,7 +468,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUser],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service throws a non-Error object (string)
       ;(global.fetch as any).mockRejectedValue('string error')
@@ -483,7 +485,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUser],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service throws undefined
       ;(global.fetch as any).mockRejectedValue(undefined)
@@ -500,7 +502,7 @@ describe('AuthService - Behavior Tests', () => {
         rows: [validUser],
         rowCount: 1,
       })
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never)
+      ;(bcrypt.compare as any).mockResolvedValue(true as never)
 
       // And: token service throws a generic Error
       const networkError = new Error('ECONNREFUSED')
