@@ -31,31 +31,43 @@ export class MigrationService implements OnModuleInit {
       return
     }
 
-    const { rows } = await this.db.query<{ filename: string }>(
-      'SELECT filename FROM schema_migrations'
-    )
-    const applied = new Set(rows.map(r => r.filename))
+    // Advisory lock ensures only one instance runs migrations when multiple
+    // Cloud Run instances start simultaneously during a deployment rollout.
+    const lockClient = await this.db.connect()
+    try {
+      await lockClient.query('SELECT pg_advisory_lock(8675309)')
 
-    for (const file of files) {
-      if (applied.has(file)) continue
+      // Re-query applied migrations after acquiring the lock — another instance
+      // may have run some while we were waiting.
+      const { rows } = await lockClient.query<{ filename: string }>(
+        'SELECT filename FROM schema_migrations'
+      )
+      const applied = new Set(rows.map(r => r.filename))
 
-      const sql = await readFile(join(migrationsDir, file), 'utf8')
-      this.logger.log(`Running migration: ${file}`)
+      for (const file of files) {
+        if (applied.has(file)) continue
 
-      const client = await this.db.connect()
-      try {
-        await client.query('BEGIN')
-        await client.query(sql)
-        await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file])
-        await client.query('COMMIT')
-        this.logger.log(`Migration applied: ${file}`)
-      } catch (err) {
-        await client.query('ROLLBACK')
-        this.logger.error(`Migration failed: ${file}`, err)
-        throw err
-      } finally {
-        client.release()
+        const sql = await readFile(join(migrationsDir, file), 'utf8')
+        this.logger.log(`Running migration: ${file}`)
+
+        const client = await this.db.connect()
+        try {
+          await client.query('BEGIN')
+          await client.query(sql)
+          await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file])
+          await client.query('COMMIT')
+          this.logger.log(`Migration applied: ${file}`)
+        } catch (err) {
+          await client.query('ROLLBACK')
+          this.logger.error(`Migration failed: ${file}`, err)
+          throw err
+        } finally {
+          client.release()
+        }
       }
+    } finally {
+      await lockClient.query('SELECT pg_advisory_unlock(8675309)')
+      lockClient.release()
     }
   }
 }
