@@ -8,6 +8,7 @@
 DROP TRIGGER IF EXISTS update_comment_likes_count_trigger ON likes;
 
 -- INSERT trigger: fires when a like is added to a comment
+DROP TRIGGER IF EXISTS update_comment_likes_count_insert_trigger ON likes;
 CREATE TRIGGER update_comment_likes_count_insert_trigger
   AFTER INSERT ON likes
   FOR EACH ROW
@@ -15,6 +16,7 @@ CREATE TRIGGER update_comment_likes_count_insert_trigger
   EXECUTE FUNCTION update_comment_likes_count();
 
 -- DELETE trigger: fires when a like is removed from a comment
+DROP TRIGGER IF EXISTS update_comment_likes_count_delete_trigger ON likes;
 CREATE TRIGGER update_comment_likes_count_delete_trigger
   AFTER DELETE ON likes
   FOR EACH ROW
