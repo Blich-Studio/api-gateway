@@ -22,12 +22,18 @@ const baseProjectRow = {
   short_description: 'Short desc',
   cover_image_url: null,
   gallery_urls: [],
+  channel: 'play',
+  platform: 'itchio',
+  external_url: 'https://example.com/project',
+  embed_url: null,
+  license: 'cc-by-nc-sa-4.0',
+  archive_url: null,
   github_url: null,
   itchio_url: null,
   steam_url: null,
   youtube_url: null,
   author_id: 'user-id-1',
-  author_display_name: 'Filip',
+  author_display_name: 'Collective Editor',
   author_avatar_url: null,
   status: 'published',
   featured: false,
@@ -174,6 +180,22 @@ describe('ProjectsService', () => {
       const countQuery = mockDb.query.mock.calls[0][0] as string
       expect(countQuery).toContain('WHERE')
       expect(mockDb.query.mock.calls[0][1]).toContain('game')
+    })
+
+    it('should apply channel filter', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ total: '1' }] })
+        .mockResolvedValueOnce({ rows: [baseProjectRow] })
+        .mockResolvedValueOnce({ rows: [] }) // getTagsForProject
+
+      await service.findAll(
+        { channel: 'sound', page: 1, limit: 10, sort: 'createdAt', order: 'desc' },
+        undefined
+      )
+
+      const countQuery = mockDb.query.mock.calls[0][0] as string
+      expect(countQuery).toContain('p.channel')
+      expect(mockDb.query.mock.calls[0][1]).toContain('sound')
     })
 
     it('should apply search filter', async () => {

@@ -26,6 +26,35 @@ interface ProjectRow {
   short_description: string | null
   cover_image_url: string | null
   gallery_urls: string[] | null
+  channel: 'sound' | 'motion' | 'play' | null
+  platform:
+    | 'soundcloud'
+    | 'youtube'
+    | 'dailymotion'
+    | 'vimeo'
+    | 'peertube'
+    | 'itchio'
+    | 'steam'
+    | 'internet_archive'
+    | 'github'
+    | 'codeberg'
+    | 'other'
+    | null
+  external_url: string | null
+  embed_url: string | null
+  license:
+    | 'cc0-1.0'
+    | 'cc-by-4.0'
+    | 'cc-by-sa-4.0'
+    | 'cc-by-nc-4.0'
+    | 'cc-by-nc-sa-4.0'
+    | 'mit'
+    | 'apache-2.0'
+    | 'gpl-3.0'
+    | 'proprietary'
+    | 'other'
+    | null
+  archive_url: string | null
   github_url: string | null
   itchio_url: string | null
   steam_url: string | null
@@ -145,6 +174,12 @@ export class ProjectsService {
       shortDescription: row.short_description,
       coverImageUrl: row.cover_image_url,
       galleryUrls: row.gallery_urls ?? [],
+      channel: row.channel,
+      platform: row.platform,
+      externalUrl: row.external_url,
+      embedUrl: row.embed_url,
+      license: row.license,
+      archiveUrl: row.archive_url,
       githubUrl: row.github_url,
       itchioUrl: row.itchio_url,
       steamUrl: row.steam_url,
@@ -197,6 +232,12 @@ export class ProjectsService {
     if (query.type) {
       conditions.push(`p.type = $${paramIndex++}`)
       params.push(query.type)
+    }
+
+    // Channel filter
+    if (query.channel) {
+      conditions.push(`p.channel = $${paramIndex++}`)
+      params.push(query.channel)
     }
 
     // Author filter
@@ -347,8 +388,12 @@ export class ProjectsService {
     const publishedAt = dto.status === 'published' ? new Date() : null
 
     const result = await this.db.query(
-      `INSERT INTO projects (title, slug, type, description, short_description, cover_image_url, gallery_urls, github_url, itchio_url, steam_url, youtube_url, author_id, status, featured, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO projects (
+        title, slug, type, description, short_description, cover_image_url, gallery_urls,
+        channel, platform, external_url, embed_url, license, archive_url,
+        github_url, itchio_url, steam_url, youtube_url, author_id, status, featured, published_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING *`,
       [
         dto.title,
@@ -358,6 +403,12 @@ export class ProjectsService {
         dto.shortDescription ?? null,
         dto.coverImageUrl ?? null,
         dto.galleryUrls,
+        dto.channel ?? null,
+        dto.platform ?? null,
+        dto.externalUrl ?? null,
+        dto.embedUrl ?? null,
+        dto.license ?? null,
+        dto.archiveUrl ?? null,
         dto.githubUrl ?? null,
         dto.itchioUrl ?? null,
         dto.steamUrl ?? null,
@@ -446,6 +497,36 @@ export class ProjectsService {
     if (dto.galleryUrls !== undefined) {
       updates.push(`gallery_urls = $${paramIndex++}`)
       values.push(dto.galleryUrls)
+    }
+
+    if (dto.channel !== undefined) {
+      updates.push(`channel = $${paramIndex++}`)
+      values.push(dto.channel)
+    }
+
+    if (dto.platform !== undefined) {
+      updates.push(`platform = $${paramIndex++}`)
+      values.push(dto.platform)
+    }
+
+    if (dto.externalUrl !== undefined) {
+      updates.push(`external_url = $${paramIndex++}`)
+      values.push(dto.externalUrl)
+    }
+
+    if (dto.embedUrl !== undefined) {
+      updates.push(`embed_url = $${paramIndex++}`)
+      values.push(dto.embedUrl)
+    }
+
+    if (dto.license !== undefined) {
+      updates.push(`license = $${paramIndex++}`)
+      values.push(dto.license)
+    }
+
+    if (dto.archiveUrl !== undefined) {
+      updates.push(`archive_url = $${paramIndex++}`)
+      values.push(dto.archiveUrl)
     }
 
     if (dto.githubUrl !== undefined) {
