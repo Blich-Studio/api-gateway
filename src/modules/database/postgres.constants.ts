@@ -1,4 +1,4 @@
-import type { QueryResult } from 'pg'
+import type { PoolClient, QueryResult } from 'pg'
 
 export const POSTGRES_CLIENT = 'POSTGRES_CLIENT'
 
@@ -7,5 +7,6 @@ export interface PostgresClient {
     text: string,
     params?: unknown[]
   ): Promise<QueryResult<T>>
+  connect(): Promise<PoolClient>
   end(): Promise<void>
 }
