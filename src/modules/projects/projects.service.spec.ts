@@ -307,6 +307,42 @@ describe('ProjectsService', () => {
       expect(result.title).toBe('Test Project')
     })
 
+    it('should persist channel metadata when creating a project', async () => {
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [] })               // slug conflict check
+        .mockResolvedValueOnce({ rows: [baseProjectRow] }) // INSERT RETURNING
+        .mockResolvedValueOnce({ rows: [baseProjectRow] }) // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })               // getTagsForProject
+        .mockResolvedValueOnce({ rows: [] })               // hasUserLiked
+        .mockResolvedValueOnce({ rows: [] })               // getArticlesForProject
+
+      await service.create(
+        {
+          title: 'Sound Piece',
+          type: 'other',
+          channel: 'sound',
+          platform: 'soundcloud',
+          externalUrl: 'https://soundcloud.com/blich/sound-piece',
+          embedUrl: 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/blich/sound-piece',
+          license: 'cc-by-nc-sa-4.0',
+          archiveUrl: 'https://archive.org/details/sound-piece',
+          description: 'Full description',
+          status: 'published',
+          featured: true,
+          tags: [],
+          galleryUrls: [],
+        },
+        'user-id-1'
+      )
+
+      const insertValues = mockDb.query.mock.calls[1][1] as unknown[]
+      expect(insertValues).toContain('sound')
+      expect(insertValues).toContain('soundcloud')
+      expect(insertValues).toContain('https://soundcloud.com/blich/sound-piece')
+      expect(insertValues).toContain('cc-by-nc-sa-4.0')
+      expect(insertValues).toContain('https://archive.org/details/sound-piece')
+    })
+
     it('should insert tags when provided', async () => {
       mockDb.query
         .mockResolvedValueOnce({ rows: [] })               // slug conflict check
@@ -374,6 +410,63 @@ describe('ProjectsService', () => {
       const result = await service.update('project-id-1', { title: 'Updated Title' }, 'user-id-1')
 
       expect(result.title).toBe('Updated Title')
+    })
+
+    it('should update channel metadata and external links', async () => {
+      const updatedRow = {
+        ...baseProjectRow,
+        channel: 'motion',
+        platform: 'youtube',
+        external_url: 'https://youtube.com/watch?v=motion-piece',
+        embed_url: 'https://www.youtube.com/embed/motion-piece',
+        license: 'cc-by-4.0',
+        archive_url: 'https://archive.org/details/motion-piece',
+        github_url: 'https://github.com/blich/motion-piece',
+        itchio_url: 'https://blich.itch.io/motion-piece',
+        steam_url: 'https://store.steampowered.com/app/123/motion-piece',
+        youtube_url: 'https://youtube.com/watch?v=motion-piece',
+        featured: true,
+      }
+      mockDb.query
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'draft' }] })
+        .mockResolvedValueOnce({ rows: [] })               // UPDATE
+        .mockResolvedValueOnce({ rows: [updatedRow] })     // findById SELECT
+        .mockResolvedValueOnce({ rows: [] })               // getTagsForProject
+        .mockResolvedValueOnce({ rows: [] })               // hasUserLiked
+        .mockResolvedValueOnce({ rows: [] })               // getArticlesForProject
+
+      const result = await service.update(
+        'project-id-1',
+        {
+          channel: 'motion',
+          platform: 'youtube',
+          externalUrl: 'https://youtube.com/watch?v=motion-piece',
+          embedUrl: 'https://www.youtube.com/embed/motion-piece',
+          license: 'cc-by-4.0',
+          archiveUrl: 'https://archive.org/details/motion-piece',
+          githubUrl: 'https://github.com/blich/motion-piece',
+          itchioUrl: 'https://blich.itch.io/motion-piece',
+          steamUrl: 'https://store.steampowered.com/app/123/motion-piece',
+          youtubeUrl: 'https://youtube.com/watch?v=motion-piece',
+          featured: true,
+        },
+        'user-id-1'
+      )
+
+      const updateQuery = mockDb.query.mock.calls[1][0] as string
+      const updateValues = mockDb.query.mock.calls[1][1] as unknown[]
+      expect(updateQuery).toContain('channel =')
+      expect(updateQuery).toContain('platform =')
+      expect(updateQuery).toContain('external_url =')
+      expect(updateQuery).toContain('archive_url =')
+      expect(updateQuery).toContain('github_url =')
+      expect(updateQuery).toContain('youtube_url =')
+      expect(updateQuery).toContain('featured =')
+      expect(updateValues).toContain('motion')
+      expect(updateValues).toContain('youtube')
+      expect(updateValues).toContain(true)
+      expect(result.channel).toBe('motion')
+      expect(result.externalUrl).toBe('https://youtube.com/watch?v=motion-piece')
     })
 
     it('should set published_at when changing status from draft to published', async () => {
