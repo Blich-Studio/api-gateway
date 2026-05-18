@@ -26,6 +26,38 @@ export type LinkedArticle = z.infer<typeof LinkedArticleSchema>
 export const ProjectTypeEnum = z.enum(['game', 'engine', 'tool', 'animation', 'artwork', 'other'])
 export type ProjectType = z.infer<typeof ProjectTypeEnum>
 
+export const ProjectChannelEnum = z.enum(['sound', 'motion', 'play'])
+export type ProjectChannel = z.infer<typeof ProjectChannelEnum>
+
+export const ProjectPlatformEnum = z.enum([
+  'soundcloud',
+  'youtube',
+  'dailymotion',
+  'vimeo',
+  'peertube',
+  'itchio',
+  'steam',
+  'internet_archive',
+  'github',
+  'codeberg',
+  'other',
+])
+export type ProjectPlatform = z.infer<typeof ProjectPlatformEnum>
+
+export const ProjectLicenseEnum = z.enum([
+  'cc0-1.0',
+  'cc-by-4.0',
+  'cc-by-sa-4.0',
+  'cc-by-nc-4.0',
+  'cc-by-nc-sa-4.0',
+  'mit',
+  'apache-2.0',
+  'gpl-3.0',
+  'proprietary',
+  'other',
+])
+export type ProjectLicense = z.infer<typeof ProjectLicenseEnum>
+
 // Project Response DTO
 export const ProjectResponseSchema = z.object({
   id: z.string().uuid(),
@@ -36,6 +68,12 @@ export const ProjectResponseSchema = z.object({
   shortDescription: z.string().nullable(),
   coverImageUrl: z.string().nullable(),
   galleryUrls: z.array(z.string()),
+  channel: ProjectChannelEnum.nullable(),
+  platform: ProjectPlatformEnum.nullable(),
+  externalUrl: z.string().nullable(),
+  embedUrl: z.string().nullable(),
+  license: ProjectLicenseEnum.nullable(),
+  archiveUrl: z.string().nullable(),
   githubUrl: z.string().nullable(),
   itchioUrl: z.string().nullable(),
   steamUrl: z.string().nullable(),
@@ -85,6 +123,21 @@ export const CreateProjectSchema = z.object({
     .array(z.string().url())
     .or(z.array(z.string()).transform(urls => urls.filter(url => url !== '')))
     .default([]),
+  channel: z.preprocess(
+    val => (val === '' || val === null ? undefined : val),
+    ProjectChannelEnum.optional()
+  ),
+  platform: z.preprocess(
+    val => (val === '' || val === null ? undefined : val),
+    ProjectPlatformEnum.optional()
+  ),
+  externalUrl: optionalUrl,
+  embedUrl: optionalUrl,
+  license: z.preprocess(
+    val => (val === '' || val === null ? undefined : val),
+    ProjectLicenseEnum.optional()
+  ),
+  archiveUrl: optionalUrl,
   githubUrl: optionalUrl,
   itchioUrl: optionalUrl,
   steamUrl: optionalUrl,
@@ -105,6 +158,7 @@ export class UpdateProjectDto extends createZodDto(UpdateProjectSchema) {}
 export const ProjectQuerySchema = z.object({
   status: z.enum(['draft', 'published', 'archived']).optional(),
   type: ProjectTypeEnum.optional(),
+  channel: ProjectChannelEnum.optional(),
   authorId: z.string().uuid().optional(),
   featured: z.preprocess(val => val === 'true' || val === true, z.boolean()).optional(),
   tags: z.string().optional(), // Comma-separated tag slugs
