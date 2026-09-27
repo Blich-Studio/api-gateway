@@ -11,8 +11,17 @@ import {
   InvalidAuthResponseError,
   TokenGenerationError,
   MissingConfigurationError,
+  DatabaseError,
 } from '../../../common/errors'
-import { TokenPayload, TokenResponseSchema, User, UserRowSchema } from '../types/auth.types'
+import {
+  RefreshUserRowSchema,
+  TokenPayload,
+  TokenResponseSchema,
+  User,
+  UserProfile,
+  UserProfileSchema,
+  UserRowSchema,
+} from '../types/auth.types'
 
 type DbRow = Record<string, unknown>
 
@@ -61,14 +70,22 @@ export class AuthService {
     const refreshToken = this.generateRefreshToken()
     const refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
+    // Note: the current schema supports one refresh session per user. The condition
+    // prevents an in-flight login restoring access after a password or role change.
+    let stored: { rowCount: number }
     try {
-      await this.postgresClient.query(
-        'UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2, last_login_at = NOW() WHERE id = $3',
-        [refreshToken, refreshTokenExpiresAt, user.id]
+      stored = await this.postgresClient.query(
+        `UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2, last_login_at = NOW()
+         WHERE id = $3 AND password_hash = $4 AND is_verified = TRUE AND role = $5`,
+        [refreshToken, refreshTokenExpiresAt, user.id, user.passwordHash, user.role]
       )
     } catch (error) {
       this.logger.error('Failed to store refresh token', error)
-      // Don't fail login if refresh token storage fails, but log it
+      throw new DatabaseError('Unable to create session')
+    }
+
+    if (stored.rowCount !== 1) {
+      throw new AuthenticationError('Account changed during login; please sign in again')
     }
 
     return {
@@ -78,7 +95,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.nickname,
-        // Note: role is NOT included here - client should decode it from the signed JWT token
+        // Clients obtain their current role from /auth/me; JWTs stay in HttpOnly cookies.
       },
     }
   }
@@ -229,6 +246,29 @@ export class AuthService {
     return randomBytes(32).toString('hex')
   }
 
+  async getProfile(userId: string): Promise<UserProfile> {
+    const result = await this.postgresClient.query(
+      `SELECT id AS "userId", email, COALESCE(nickname, first_name, email) AS name, role
+       FROM users WHERE id = $1 AND is_verified = TRUE`,
+      [userId]
+    )
+    const profile = UserProfileSchema.safeParse(result.rows[0])
+    if (!profile.success) {
+      throw new AuthenticationError('Account is unavailable')
+    }
+    return profile.data
+  }
+
+  async logout(refreshToken: string): Promise<{ success: true }> {
+    await this.postgresClient.query(
+      `UPDATE users SET refresh_token = NULL, refresh_token_expires_at = NULL
+       WHERE refresh_token = $1`,
+      [refreshToken]
+    )
+    // Access JWTs remain valid until their short expiry. This revokes renewal.
+    return { success: true }
+  }
+
   async refreshToken(
     refreshToken: string
   ): Promise<{ access_token: string; refresh_token: string }> {
@@ -238,7 +278,7 @@ export class AuthService {
 
     // Validate refresh token exists in database and get user info for new token
     const result = await this.postgresClient.query(
-      `SELECT id, email, nickname, role, refresh_token_expires_at
+      `SELECT id, email, nickname, role, is_verified, refresh_token_expires_at
        FROM users
        WHERE refresh_token = $1`,
       [refreshToken]
@@ -248,16 +288,14 @@ export class AuthService {
       throw new AuthenticationError('Invalid or expired refresh token')
     }
 
-    const user = result.rows[0] as {
-      id: string
-      email: string
-      nickname: string | null
-      role: string
-      refresh_token_expires_at: Date | null
+    const parsedUser = RefreshUserRowSchema.safeParse(result.rows[0])
+    if (!parsedUser.success) {
+      throw new AuthenticationError('Invalid or expired refresh token')
     }
+    const user = parsedUser.data
 
     // Check if refresh token has expired
-    if (user.refresh_token_expires_at && new Date(user.refresh_token_expires_at) < new Date()) {
+    if (user.refresh_token_expires_at.getTime() <= Date.now()) {
       throw new AuthenticationError('Refresh token has expired')
     }
 
@@ -266,22 +304,29 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       displayName: user.nickname ?? undefined,
-      role: user.role as 'admin' | 'writer' | 'reader',
+      role: user.role,
     })
 
     // Rotate refresh token — invalidate old token and issue a new one
     const newRefreshToken = this.generateRefreshToken()
     const refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
+    // The database compare-and-swap allows exactly one use across application
+    // instances and cannot restore a token revoked while the issuer was running.
+    let rotated: { rowCount: number }
     try {
-      await this.postgresClient.query(
-        'UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2 WHERE id = $3',
-        [newRefreshToken, refreshTokenExpiresAt, user.id]
+      rotated = await this.postgresClient.query(
+        `UPDATE users SET refresh_token = $1, refresh_token_expires_at = $2
+         WHERE id = $3 AND refresh_token = $4 AND is_verified = TRUE
+           AND refresh_token_expires_at > NOW() AND role = $5`,
+        [newRefreshToken, refreshTokenExpiresAt, user.id, refreshToken, user.role]
       )
     } catch (error) {
       this.logger.error('Failed to rotate refresh token', error)
-      // Rotation failed — return the old token (still valid in DB) so the client doesn't store a dead token
-      return { access_token: newAccessToken, refresh_token: refreshToken }
+      throw new DatabaseError('Unable to renew session')
+    }
+    if (rotated.rowCount !== 1) {
+      throw new AuthenticationError('Invalid or expired refresh token')
     }
 
     return { access_token: newAccessToken, refresh_token: newRefreshToken }

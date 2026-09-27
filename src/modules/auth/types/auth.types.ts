@@ -26,6 +26,24 @@ export const TokenResponseSchema = z.object({
  */
 export type User = z.infer<typeof UserRowSchema>
 
+export const UserProfileSchema = z.object({
+  userId: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string(),
+  role: z.enum(['reader', 'writer', 'admin']),
+})
+
+export type UserProfile = z.infer<typeof UserProfileSchema>
+
+export const RefreshUserRowSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  nickname: z.string().nullable(),
+  role: z.enum(['reader', 'writer', 'admin']),
+  is_verified: z.literal(true),
+  refresh_token_expires_at: z.coerce.date(),
+})
+
 /**
  * JWT token payload structure (matches JWKS service schema)
  */

@@ -1,5 +1,6 @@
+# syntax=docker/dockerfile:1.5
 # Build stage
-FROM oven/bun:1-alpine AS builder
+FROM oven/bun:1.3.5-alpine AS builder
 
 WORKDIR /app
 
@@ -8,9 +9,8 @@ COPY package.json bun.lock* ./
 COPY .npmrc ./
 
 # Install dependencies
-ARG NPM_TOKEN
-ENV NPM_TOKEN=${NPM_TOKEN}
-RUN bun install --frozen-lockfile
+RUN --mount=type=secret,id=npm_token,required=true \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -19,7 +19,7 @@ COPY . .
 RUN bun run build
 
 # Production stage
-FROM oven/bun:1-alpine AS production
+FROM oven/bun:1.3.5-alpine AS production
 
 WORKDIR /app
 
@@ -28,9 +28,8 @@ COPY package.json bun.lock* ./
 COPY .npmrc ./
 
 # Install production dependencies only
-ARG NPM_TOKEN
-ENV NPM_TOKEN=${NPM_TOKEN}
-RUN bun install --production --frozen-lockfile --ignore-scripts
+RUN --mount=type=secret,id=npm_token,required=true \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" bun install --production --frozen-lockfile --ignore-scripts
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist

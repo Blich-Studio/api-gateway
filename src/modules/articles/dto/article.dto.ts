@@ -64,7 +64,21 @@ export const CreateArticleSchema = z.object({
 export class CreateArticleDto extends createZodDto(CreateArticleSchema) {}
 
 // Update Article DTO
-export const UpdateArticleSchema = CreateArticleSchema.partial()
+export const UpdateArticleSchema = CreateArticleSchema.omit({
+  status: true,
+  featured: true,
+  tags: true,
+  coverImageUrl: true,
+})
+  .partial()
+  .extend({
+    status: z.enum(['draft', 'published', 'archived']).optional(),
+    featured: z.boolean().optional(),
+    tags: z.array(z.string().min(1).max(30)).optional(),
+    coverImageUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+  })
 
 export class UpdateArticleDto extends createZodDto(UpdateArticleSchema) {}
 

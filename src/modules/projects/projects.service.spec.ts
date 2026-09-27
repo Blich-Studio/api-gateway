@@ -485,10 +485,10 @@ describe('ProjectsService', () => {
       expect(updateQuery).toContain('published_at')
     })
 
-    it('should NOT set published_at when already published', async () => {
+    it.each(['published', 'archived'])('preserves original publication time from %s', async (status) => {
       const updatedRow = { ...baseProjectRow, status: 'published' }
       mockDb.query
-        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status: 'published' }] })
+        .mockResolvedValueOnce({ rows: [{ author_id: 'user-id-1', status, published_at: new Date('2026-01-01') }] })
         .mockResolvedValueOnce({ rows: [] })               // UPDATE
         .mockResolvedValueOnce({ rows: [updatedRow] })     // findById SELECT
         .mockResolvedValueOnce({ rows: [] })               // getTagsForProject

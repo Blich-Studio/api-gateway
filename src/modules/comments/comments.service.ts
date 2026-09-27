@@ -1,3 +1,4 @@
+import { commentVisibility, contentVisibility } from '../../common/content/visibility'
 import {
   Inject,
   Injectable,
@@ -77,9 +78,9 @@ export class CommentsService {
         u.avatar_url as user_avatar_url
        FROM comments c
        INNER JOIN users u ON u.id = c.user_id
-       WHERE c.parent_id = ANY($1) AND c.status = 'approved'
+       WHERE c.parent_id = ANY($1) AND ${commentVisibility('c', '$2')}
        ORDER BY c.created_at ASC`,
-      [parentIds]
+      [parentIds, userId ?? null]
     )
 
     const replyRows = result.rows as unknown as CommentRow[]
@@ -150,9 +151,9 @@ export class CommentsService {
         u.avatar_url as user_avatar_url
        FROM comments c
        INNER JOIN users u ON u.id = c.user_id
-       WHERE c.parent_id = $1 AND c.status = 'approved'
+       WHERE c.parent_id = $1 AND ${commentVisibility('c', '$2')}
        ORDER BY c.created_at ASC`,
-      [parentId]
+      [parentId, userId ?? null]
     )
 
     return Promise.all(
@@ -190,6 +191,9 @@ export class CommentsService {
     } else {
       conditions.push(`c.status = 'approved'`)
     }
+
+    conditions.push(commentVisibility('c', `$${paramIndex++}`))
+    params.push(userId ?? null)
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`
 
@@ -270,8 +274,8 @@ export class CommentsService {
         u.avatar_url as user_avatar_url
        FROM comments c
        INNER JOIN users u ON u.id = c.user_id
-       WHERE c.id = $1`,
-      [id]
+       WHERE c.id = $1 AND ${commentVisibility('c', '$2')}`,
+      [id, userId ?? null]
     )
 
     if (result.rows.length === 0) {
@@ -290,8 +294,8 @@ export class CommentsService {
     // Validate parent comment if provided
     if (dto.parentId) {
       const parent = await this.db.query(
-        'SELECT article_id, project_id FROM comments WHERE id = $1',
-        [dto.parentId]
+        `SELECT article_id, project_id FROM comments c WHERE id = $1 AND ${commentVisibility('c', '$2')}`,
+        [dto.parentId, userId]
       )
       if (parent.rows.length === 0) {
         throw new BadRequestException('Parent comment not found')
@@ -307,7 +311,10 @@ export class CommentsService {
 
     // Validate article exists if provided
     if (dto.articleId) {
-      const article = await this.db.query('SELECT id FROM articles WHERE id = $1', [dto.articleId])
+      const article = await this.db.query(
+        `SELECT id FROM articles a WHERE a.id = $1 AND ${contentVisibility('a', '$2')}`,
+        [dto.articleId, userId]
+      )
       if (article.rows.length === 0) {
         throw new BadRequestException('Article not found')
       }
@@ -315,7 +322,10 @@ export class CommentsService {
 
     // Validate project exists if provided
     if (dto.projectId) {
-      const project = await this.db.query('SELECT id FROM projects WHERE id = $1', [dto.projectId])
+      const project = await this.db.query(
+        `SELECT id FROM projects p WHERE p.id = $1 AND ${contentVisibility('p', '$2')}`,
+        [dto.projectId, userId]
+      )
       if (project.rows.length === 0) {
         throw new BadRequestException('Project not found')
       }

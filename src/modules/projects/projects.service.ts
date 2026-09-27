@@ -1,3 +1,4 @@
+import { contentVisibility } from '../../common/content/visibility'
 import {
   Inject,
   Injectable,
@@ -275,6 +276,9 @@ export class ProjectsService {
       paramIndex++
     }
 
+    conditions.push(contentVisibility('p', `$${paramIndex++}`))
+    params.push(userId ?? null)
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     // Get total count
@@ -339,8 +343,8 @@ export class ProjectsService {
         u.avatar_url as author_avatar_url
        FROM projects p
        INNER JOIN users u ON u.id = p.author_id
-       WHERE p.id = $1`,
-      [id]
+       WHERE p.id = $1 AND ${contentVisibility('p', '$2')}`,
+      [id, userId ?? null]
     )
 
     if (result.rows.length === 0) {
@@ -361,8 +365,8 @@ export class ProjectsService {
         u.avatar_url as author_avatar_url
        FROM projects p
        INNER JOIN users u ON u.id = p.author_id
-       WHERE p.slug = $1`,
-      [slug]
+       WHERE p.slug = $1 AND ${contentVisibility('p', '$2')}`,
+      [slug, userId ?? null]
     )
 
     if (result.rows.length === 0) {
@@ -441,9 +445,10 @@ export class ProjectsService {
    */
   async update(id: string, dto: UpdateProjectDto, userId: string): Promise<ProjectResponse> {
     // Check if project exists and user is author
-    const existing = await this.db.query('SELECT author_id, status FROM projects WHERE id = $1', [
-      id,
-    ])
+    const existing = await this.db.query(
+      'SELECT author_id, status, published_at FROM projects WHERE id = $1',
+      [id]
+    )
     if (existing.rows.length === 0) {
       throw new NotFoundException(`Project with ID ${id} not found`)
     }
@@ -559,7 +564,7 @@ export class ProjectsService {
       values.push(dto.status)
 
       // Set published_at if publishing for first time
-      if (dto.status === 'published' && existing.rows[0].status !== 'published') {
+      if (dto.status === 'published' && !existing.rows[0].published_at) {
         updates.push(`published_at = $${paramIndex++}`)
         values.push(new Date())
       }

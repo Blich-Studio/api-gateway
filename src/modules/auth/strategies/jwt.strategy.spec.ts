@@ -50,7 +50,7 @@ describe('JwtStrategy - Contract Tests', () => {
       expect(
         () =>
           new JwtStrategy(invalidConfig as any)
-      ).toThrow('Missing required JWT configuration')
+      ).toThrow('Missing required configuration: JWKS_URL, JWT_ISSUER and JWT_AUDIENCE')
     })
 
     it('should throw error when jwtIssuer is missing', () => {
@@ -65,7 +65,7 @@ describe('JwtStrategy - Contract Tests', () => {
       expect(
         () =>
           new JwtStrategy(invalidConfig as any)
-      ).toThrow('Missing required JWT configuration')
+      ).toThrow('Missing required configuration: JWKS_URL, JWT_ISSUER and JWT_AUDIENCE')
     })
 
     it('should throw error when jwtAudience is missing', () => {
@@ -80,7 +80,7 @@ describe('JwtStrategy - Contract Tests', () => {
       expect(
         () =>
           new JwtStrategy(invalidConfig as any)
-      ).toThrow('Missing required JWT configuration')
+      ).toThrow('Missing required configuration: JWKS_URL, JWT_ISSUER and JWT_AUDIENCE')
     })
 
     it('should initialize successfully with valid configuration', () => {

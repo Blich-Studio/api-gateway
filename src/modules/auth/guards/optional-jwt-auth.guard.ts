@@ -1,5 +1,7 @@
 import { Injectable, ExecutionContext } from '@nestjs/common'
+import type { Request } from 'express'
 import { AuthGuard } from '@nestjs/passport'
+import { AuthenticationError } from '../../../common/errors'
 
 /**
  * Optional JWT Auth Guard
@@ -12,10 +14,13 @@ export class OptionalJwtAuthGuard extends AuthGuard('jwt') {
     err: Error | null,
     user: TUser | false,
     _info: unknown,
-    _context: ExecutionContext
+    context: ExecutionContext
   ): TUser | undefined {
-    // Don't throw error, just return undefined if not authenticated
     if (err || !user) {
+      // Anonymous reads are allowed, but expired credentials must trigger proxy refresh.
+      if (context.switchToHttp().getRequest<Request>().headers.authorization) {
+        throw new AuthenticationError('Invalid or expired token')
+      }
       return undefined
     }
     return user

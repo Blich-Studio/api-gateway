@@ -163,7 +163,9 @@ export class UsersService {
   async updateVerification(id: string, dto: UpdateUserVerificationDto) {
     const query = `
       UPDATE users
-      SET is_verified = $1
+      SET is_verified = $1,
+          refresh_token = CASE WHEN $1 THEN refresh_token ELSE NULL END,
+          refresh_token_expires_at = CASE WHEN $1 THEN refresh_token_expires_at ELSE NULL END
       WHERE id = $2
       RETURNING id, email, nickname, first_name, last_name, role, is_verified, avatar_url, created_at, last_login_at
     `
@@ -187,7 +189,7 @@ export class UsersService {
 
     const query = `
       UPDATE users
-      SET password_hash = $1
+      SET password_hash = $1, refresh_token = NULL, refresh_token_expires_at = NULL
       WHERE id = $2
       RETURNING id, email, nickname
     `
