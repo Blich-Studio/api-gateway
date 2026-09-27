@@ -6,12 +6,13 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-image'
     secretEnv: ['NPM_TOKEN']
+    env: ['DOCKER_BUILDKIT=1']
     entrypoint: 'bash'
     args:
       - '-c'
       - |
         docker build \
-          --build-arg NPM_TOKEN="$$NPM_TOKEN" \
+          --secret id=npm_token,env=NPM_TOKEN \
           -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${SHORT_SHA} \
           -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}:latest \
           .

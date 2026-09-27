@@ -25,3 +25,16 @@ describe('content patch contract', () => {
     expect(UpdateProjectSchema.parse({ featured: false, tags: [], galleryUrls: [] })).toEqual({ featured: false, tags: [], galleryUrls: [] })
   })
 })
+
+it('normalizes every optional project field while retaining explicit updates', () => {
+  const fields = ['coverImageUrl', 'externalUrl', 'embedUrl', 'archiveUrl', 'githubUrl', 'itchioUrl', 'steamUrl', 'youtubeUrl']
+  for (const value of ['', null, 'https://example.test/item']) {
+    const urls = Object.fromEntries(fields.map(field => [field, value]))
+    const expected = Object.fromEntries(fields.map(field => [field, value === '' ? null : value]))
+    expect(UpdateProjectSchema.parse(urls)).toEqual(expected)
+    const created = CreateProjectSchema.parse({title:'Game',description:'Description',...urls,channel:'play',platform:'itchio',license:'mit'})
+    expect(created.githubUrl).toBe(value === '' || value === null ? undefined : value)
+  }
+  expect(CreateProjectSchema.parse({title:'Game',description:'Description',channel:'',platform:null,license:'',galleryUrls:['','https://example.test/image.png']})).toMatchObject({galleryUrls:['https://example.test/image.png'],channel:undefined,platform:undefined,license:undefined})
+  expect(UpdateProjectSchema.parse({channel:'play',platform:'itchio',license:'mit'})).toEqual({channel:'play',platform:'itchio',license:'mit'})
+})
