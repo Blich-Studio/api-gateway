@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { Throttle } from '@nestjs/throttler'
 import { AuthService } from '../services/auth.service'
@@ -39,7 +39,7 @@ export class AuthController {
       },
     },
   })
-  @Throttle({ default: { limit: 5, ttl: 60 } }) // 5 requests per 60 seconds
+  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // 5 requests per 60 seconds
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.password)
   }
@@ -67,9 +67,17 @@ export class AuthController {
       },
     },
   })
-  @Throttle({ default: { limit: 10, ttl: 60 } }) // 10 requests per 60 seconds
+  @Throttle({ default: { limit: 10, ttl: 60_000 } }) // 10 requests per 60 seconds
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refreshToken(refreshTokenDto.refreshToken)
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Revoke the presented refresh token, even after access expiry' })
+  @ApiResponse({ status: 200, description: 'Refresh token revoked or already invalid' })
+  async logout(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.logout(refreshTokenDto.refreshToken)
   }
 
   @UseGuards(JwtAuthGuard)
@@ -83,6 +91,7 @@ export class AuthController {
         userId: 'user-123',
         email: 'user@example.com',
         name: 'John Doe',
+        role: 'writer',
       },
     },
   })
@@ -91,6 +100,6 @@ export class AuthController {
     description: 'Unauthorized - Invalid or missing token',
   })
   getProfile(@CurrentUser() user: { userId: string; email: string; name?: string }) {
-    return user
+    return this.authService.getProfile(user.userId)
   }
 }

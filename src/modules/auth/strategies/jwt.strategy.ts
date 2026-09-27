@@ -4,6 +4,7 @@ import { Strategy } from 'passport-custom'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import type { Request } from 'express'
 import { AppConfigService } from '../../../common/config'
+import { AuthenticationError, MissingConfigurationError } from '../../../common/errors'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -17,7 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const { jwksUrl, jwtIssuer, jwtAudience } = appConfig
 
     if (!jwksUrl || !jwtIssuer || !jwtAudience) {
-      throw new Error('Missing required JWT configuration')
+      throw new MissingConfigurationError('JWKS_URL, JWT_ISSUER and JWT_AUDIENCE')
     }
 
     // Create and cache JWKS instance for token verification
@@ -31,7 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const authHeader = req.headers.authorization
 
     if (!authHeader?.startsWith('Bearer ')) {
-      throw new Error('No auth token')
+      throw new AuthenticationError('No auth token')
     }
 
     const token = authHeader.substring(7)
@@ -49,16 +50,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         !payload.email ||
         typeof payload.email !== 'string'
       ) {
-        throw new Error('Invalid token payload')
+        throw new AuthenticationError('Invalid token payload')
       }
 
       return {
         userId: payload.sub,
         email: payload.email,
-        name: payload.displayName as string | undefined,
+        name: typeof payload.displayName === 'string' ? payload.displayName : undefined,
       }
     } catch (_error) {
-      throw new Error('Invalid or expired token')
+      throw new AuthenticationError('Invalid or expired token')
     }
   }
 }

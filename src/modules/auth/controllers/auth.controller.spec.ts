@@ -17,6 +17,8 @@ describe('AuthController - Contract Tests', () => {
   const mockAuthService = {
     login: vi.fn(),
     refreshToken: vi.fn(),
+    getProfile: vi.fn(),
+    logout: vi.fn(),
   }
 
   beforeEach(async () => {
@@ -111,54 +113,25 @@ describe('AuthController - Contract Tests', () => {
   })
 
   describe('GET /auth/me', () => {
-    const authenticatedUser = {
-      userId: '550e8400-e29b-41d4-a716-446655440000',
-      email: 'user@example.com',
-      name: 'Test User',
-    }
-
-    it('should return current user profile when authenticated', () => {
-      // Given: user is authenticated
-      // When: calling getProfile with authenticated user data
-      const result = controller.getProfile(authenticatedUser)
-
-      // Then: should return user profile exactly as provided
-      expect(result).toEqual(authenticatedUser)
-      expect(result).toHaveProperty('userId', authenticatedUser.userId)
-      expect(result).toHaveProperty('email', authenticatedUser.email)
-      expect(result).toHaveProperty('name', authenticatedUser.name)
-    })
-
-    it('should return user profile without name when name is not present', () => {
-      // Given: user is authenticated but has no name
-      const userWithoutName = {
+    it('loads the current database profile by subject instead of returning JWT claims', async () => {
+      const profile = {
         userId: '550e8400-e29b-41d4-a716-446655440000',
-        email: 'noname@example.com',
-        name: undefined,
+        email: 'current@example.com',
+        name: 'Current name',
+        role: 'reader',
       }
+      mockAuthService.getProfile.mockResolvedValue(profile)
 
-      // When: calling getProfile
-      const result = controller.getProfile(userWithoutName)
-
-      // Then: should return profile with undefined name
-      expect(result).toEqual(userWithoutName)
-      expect(result.name).toBeUndefined()
+      expect(await controller.getProfile({ ...profile, email: 'stale@example.com' })).toEqual(profile)
+      expect(mockAuthService.getProfile).toHaveBeenCalledWith(profile.userId)
     })
+  })
 
-    it('should return exact user data structure from JWT payload', () => {
-      // Given: authenticated user with all fields
-      const fullUserData = {
-        userId: '123e4567-e89b-12d3-a456-426614174000',
-        email: 'test@example.com',
-        name: 'Full Name User',
-      }
-
-      // When: calling getProfile
-      const result = controller.getProfile(fullUserData)
-
-      // Then: should return exact same structure without transformation
-      expect(result).toBe(fullUserData)
-      expect(JSON.stringify(result)).toBe(JSON.stringify(fullUserData))
+  describe('POST /auth/logout', () => {
+    it('revokes only the presented refresh token', async () => {
+      mockAuthService.logout.mockResolvedValue({ success: true })
+      expect(await controller.logout({ refreshToken: 'current-refresh' })).toEqual({ success: true })
+      expect(mockAuthService.logout).toHaveBeenCalledWith('current-refresh')
     })
   })
 
@@ -190,20 +163,4 @@ describe('AuthController - Contract Tests', () => {
     })
   })
 
-  describe('Authentication Guard Contract', () => {
-    it('getProfile should require authentication (contract expectation)', () => {
-      // This test documents the contract that /auth/me requires authentication
-      // The actual guard validation is handled by NestJS guards at runtime
-      // We verify the method exists and returns user data when called with valid user
-
-      const mockUser = {
-        userId: 'test-id',
-        email: 'test@example.com',
-        name: 'Test',
-      }
-
-      const result = controller.getProfile(mockUser)
-      expect(result).toEqual(mockUser)
-    })
-  })
 })

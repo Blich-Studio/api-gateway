@@ -150,7 +150,65 @@ export const CreateProjectSchema = z.object({
 export class CreateProjectDto extends createZodDto(CreateProjectSchema) {}
 
 // Update Project DTO
-export const UpdateProjectSchema = CreateProjectSchema.partial()
+export const UpdateProjectSchema = CreateProjectSchema.omit({
+  type: true,
+  status: true,
+  featured: true,
+  tags: true,
+  galleryUrls: true,
+  channel: true,
+  platform: true,
+  license: true,
+  coverImageUrl: true,
+  externalUrl: true,
+  embedUrl: true,
+  archiveUrl: true,
+  githubUrl: true,
+  itchioUrl: true,
+  steamUrl: true,
+  youtubeUrl: true,
+})
+  .partial()
+  .extend({
+    type: ProjectTypeEnum.optional(),
+    status: z.enum(['draft', 'published', 'archived']).optional(),
+    featured: z.boolean().optional(),
+    tags: z.array(z.string().min(1).max(30)).optional(),
+    galleryUrls: z.array(z.string().url()).optional(),
+    channel: z
+      .preprocess(value => (value === '' ? null : value), ProjectChannelEnum.nullable())
+      .optional(),
+    platform: z
+      .preprocess(value => (value === '' ? null : value), ProjectPlatformEnum.nullable())
+      .optional(),
+    license: z
+      .preprocess(value => (value === '' ? null : value), ProjectLicenseEnum.nullable())
+      .optional(),
+    coverImageUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    externalUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    embedUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    archiveUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    githubUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    itchioUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    steamUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+    youtubeUrl: z
+      .preprocess(value => (value === '' ? null : value), z.string().url().nullable())
+      .optional(),
+  })
 
 export class UpdateProjectDto extends createZodDto(UpdateProjectSchema) {}
 

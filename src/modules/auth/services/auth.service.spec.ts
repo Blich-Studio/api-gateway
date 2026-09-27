@@ -61,7 +61,7 @@ describe('AuthService - Behavior Tests', () => {
 
   beforeEach(async () => {
     // Reset mocks
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     global.fetch = vi.fn()
 
     const module: TestingModule = await Test.createTestingModule({
@@ -127,7 +127,7 @@ describe('AuthService - Behavior Tests', () => {
       )
     })
 
-    it('should still return login response even if refresh token storage fails', async () => {
+    it('fails without returning credentials if refresh token storage fails', async () => {
       // Given: user exists and password is correct
       mockPostgresClient.query.mockResolvedValueOnce({
         rows: [validUserInDb],
@@ -154,18 +154,8 @@ describe('AuthService - Behavior Tests', () => {
       // And: refresh token storage fails
       mockPostgresClient.query.mockRejectedValueOnce(new Error('Database error'))
 
-      // When: user attempts to login
-      const result = await service.login(validUserInDb.email, 'correct-password')
-
-      // Then: should still return login response (refresh token storage failure is non-fatal)
-      expect(result).toEqual({
-        access_token: mockToken,
-        refresh_token: mockRefreshToken,
-        user: {
-          id: validUserInDb.id,
-          email: validUserInDb.email,
-          name: validUserInDb.nickname,
-        },
+      await expect(service.login(validUserInDb.email, 'correct-password')).rejects.toMatchObject({
+        code: 'DATABASE_ERROR',
       })
     })
 
@@ -308,6 +298,7 @@ describe('AuthService - Behavior Tests', () => {
           email: 'test@example.com',
           nickname: 'Test User',
           role: 'reader',
+          is_verified: true,
           refresh_token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         }],
         rowCount: 1,
@@ -319,6 +310,7 @@ describe('AuthService - Behavior Tests', () => {
         json: async () => ({ token: newAccessToken }),
       } as unknown as Response)
 
+      mockPostgresClient.query.mockResolvedValueOnce({ rows: [], rowCount: 1 })
       ;(randomBytes as any).mockReturnValue({ toString: () => 'mock-new-refresh-token' })
 
       // When: calling refreshToken with valid refresh token
@@ -327,7 +319,7 @@ describe('AuthService - Behavior Tests', () => {
       // Then: should return new access token and rotated refresh token
       expect(result).toEqual({ access_token: newAccessToken, refresh_token: 'mock-new-refresh-token' })
       expect(mockPostgresClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT id, email, nickname, role, refresh_token_expires_at'),
+        expect.stringContaining('SELECT id, email, nickname, role, is_verified, refresh_token_expires_at'),
         [refreshToken]
       )
       expect(fetch).toHaveBeenCalledWith(
@@ -368,6 +360,7 @@ describe('AuthService - Behavior Tests', () => {
           email: 'test@example.com',
           nickname: 'Test User',
           role: 'reader',
+          is_verified: true,
           refresh_token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         }],
         rowCount: 1,
