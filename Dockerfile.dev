@@ -1,5 +1,5 @@
 # Development Dockerfile with hot reload and debugging
-FROM oven/bun:1-alpine
+FROM oven/bun:1.3.5-alpine
 
 WORKDIR /app
 
@@ -8,11 +8,9 @@ RUN apk add --no-cache git nodejs npm
 
 # Copy package files
 COPY package.json bun.lock* ./
-COPY .npmrc ./
+COPY vendor/eslint-config ./vendor/eslint-config
 
 # Install all dependencies (including dev)
-ARG NPM_TOKEN
-ENV NPM_TOKEN=${NPM_TOKEN}
 RUN bun install --frozen-lockfile
 
 # Copy source code

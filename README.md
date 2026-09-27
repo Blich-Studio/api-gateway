@@ -2,6 +2,13 @@
 
 NestJS-based API Gateway providing authentication, user management, and GraphQL/REST interface for Blich Studio applications.
 
+## Dependency installation
+
+Builds and CI use public npm dependencies plus the bundled
+[`@blich-studio/eslint-config` 1.4.0](vendor/eslint-config/README.md).
+No GitHub Packages token or subscription is required. Use Bun 1.3.5 and
+`bun install --frozen-lockfile` to reproduce the checked-in dependency graph.
+
 ## Features
 
 - ✅ JWT authentication with email verification
@@ -127,9 +134,6 @@ VERIFICATION_TOKEN_EXPIRY_HOURS=24
 # Email
 EMAIL_FROM=noreply@blichstudio.com
 COMPANY_NAME=Blich Studio
-
-# NPM (for private packages)
-NPM_TOKEN=your-npm-token
 ```
 
 ## API Documentation
@@ -210,9 +214,6 @@ echo -n "false" | gcloud secrets create POSTGRES_SSL --data-file=-
 # App config
 echo -n "12" | gcloud secrets create BCRYPT_SALT_ROUNDS --data-file=-
 echo -n "24" | gcloud secrets create VERIFICATION_TOKEN_EXPIRY_HOURS --data-file=-
-
-# NPM token for private packages
-echo -n "your-npm-token" | gcloud secrets create NPM_TOKEN_CLOUDBUILD --data-file=-
 ```
 
 **6. Grant Permissions**
@@ -240,10 +241,6 @@ gcloud projects add-iam-policy-binding $GCP_PROJECT_ID \
   --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
-# Cloud Build P4SA access to NPM token
-gcloud secrets add-iam-policy-binding NPM_TOKEN_CLOUDBUILD \
-  --member="serviceAccount:service-${PROJECT_NUMBER}@gcp-sa-cloudbuild.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
 ```
 
 **7. Setup GitHub Connection** (for automated deployments)

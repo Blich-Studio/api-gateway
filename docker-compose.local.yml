@@ -35,8 +35,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-      args:
-        NPM_TOKEN: ${NPM_TOKEN}
     container_name: blich-api-gateway-local
     restart: unless-stopped
     ports:
@@ -91,8 +89,6 @@ services:
     build:
       context: ../jwks-service
       dockerfile: Dockerfile
-      args:
-        NPM_TOKEN: ${NPM_TOKEN}
     container_name: blich-jwks-local
     ports:
       - "3100:3100"
