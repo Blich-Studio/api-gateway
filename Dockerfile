@@ -6,11 +6,10 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json bun.lock* ./
-COPY .npmrc ./
+COPY vendor/eslint-config ./vendor/eslint-config
 
 # Install dependencies
-RUN --mount=type=secret,id=npm_token,required=true \
-    NPM_TOKEN="$(cat /run/secrets/npm_token)" bun install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -25,11 +24,10 @@ WORKDIR /app
 
 # Copy package files
 COPY package.json bun.lock* ./
-COPY .npmrc ./
+COPY vendor/eslint-config ./vendor/eslint-config
 
 # Install production dependencies only
-RUN --mount=type=secret,id=npm_token,required=true \
-    NPM_TOKEN="$(cat /run/secrets/npm_token)" bun install --production --frozen-lockfile --ignore-scripts
+RUN bun install --production --frozen-lockfile --ignore-scripts
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist

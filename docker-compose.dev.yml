@@ -5,8 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-      args:
-        NPM_TOKEN: ${NPM_TOKEN}
     container_name: blich-api-gateway-dev
     restart: unless-stopped
     ports:

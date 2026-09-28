@@ -26,7 +26,7 @@
         "zod": "^4.1.13",
       },
       "devDependencies": {
-        "@blich-studio/eslint-config": "^1.4.0",
+        "@blich-studio/eslint-config": "file:./vendor/eslint-config",
         "@commitlint/cli": "^20.1.0",
         "@commitlint/config-conventional": "^20.0.0",
         "@nestjs/cli": "^11.0.0",
@@ -78,7 +78,7 @@
 
     "@bcoe/v8-coverage": ["@bcoe/v8-coverage@1.0.2", "", {}, "sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA=="],
 
-    "@blich-studio/eslint-config": ["@blich-studio/eslint-config@1.4.0", "https://npm.pkg.github.com/download/@blich-studio/eslint-config/1.4.0/e4c5165bb76646069858e2077ef97b4a22519d40", { "dependencies": { "@eslint/js": "^9.39.0", "@typescript-eslint/utils": "^8.48.0", "eslint-config-prettier": "^9.1.0", "eslint-plugin-prettier": "^5.2.1", "globals": "^15.9.0", "prettier": "^3.3.3", "typescript-eslint": "^8.48.0" }, "peerDependencies": { "eslint": "^9.39.0" } }, "sha512-lK7pyaoZeYsIdvggf04mhPvKmcXsZLAJZzHrmUxo8oVyuXFKEi6GWcItPhn10eAOUlSlSoEJuMcmEeJxQ+oI7g=="],
+    "@blich-studio/eslint-config": ["@blich-studio/eslint-config@file:vendor/eslint-config", { "dependencies": { "@eslint/js": "^9.39.0", "@typescript-eslint/utils": "^8.48.0", "eslint-config-prettier": "^9.1.0", "eslint-plugin-prettier": "^5.2.1", "globals": "^15.9.0", "prettier": "^3.3.3", "typescript-eslint": "^8.48.0" }, "peerDependencies": { "eslint": "^9.39.0", "prettier": "^3.3.3" } }],
 
     "@borewit/text-codec": ["@borewit/text-codec@0.1.1", "", {}, "sha512-5L/uBxmjaCIX5h8Z+uu+kA9BQLkc/Wl06UGR5ajNRxu+/XjonB5i8JpgFMrPj3LXTCPA0pv8yxUvbUi+QthGGA=="],
 
